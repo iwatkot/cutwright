@@ -109,7 +109,8 @@ describe('headless MCP launcher', () => {
     expect(mcpTargetArgument(['program'])).toBeNull();
     expect(mcpTargetArgument(['program', '--mcp-stdio', '--editor=cutwright-0123456789abcdef'])).toEqual({ editor: 'cutwright-0123456789abcdef' });
     for (const args of [['--mcp-stdio'], ['--mcp-stdio', '--editor=a', '--session=b'], ['--mcp-stdio', '--editor=a', '--editor=b']]) expect(() => mcpTargetArgument(args)).toThrow(/exactly one/);
-    expect(nodeAgentLocatorDirectory({ APPDATA: 'C:/Users/Test/AppData/Roaming' }, 'win32')).toBe(path.join('C:/Users/Test/AppData/Roaming', 'CutWright', 'agent-connections'));
+    expect(nodeAgentLocatorDirectory({ APPDATA: 'C:/Users/Test/AppData/Roaming' }, 'win32')).toBe(path.win32.join('C:/Users/Test/AppData/Roaming', 'CutWright', 'agent-connections'));
+    expect(nodeAgentLocatorDirectory({ XDG_CONFIG_HOME: '/tmp/config' }, 'linux')).toBe('/tmp/config/CutWright/agent-connections');
     expect(() => nodeAgentLocatorDirectory({}, 'win32')).toThrow(/unavailable/);
     expect(() => nodeAgentLocatorDirectory({ APPDATA: '../other' }, 'win32')).toThrow(/unavailable/);
   });

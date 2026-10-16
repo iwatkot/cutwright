@@ -6,11 +6,12 @@ import { resolveAgentEditor } from './mcpBridge';
 import { mcpTargetArgument, runMcpStdio } from './mcpStdio';
 
 export function nodeAgentLocatorDirectory(env = process.env, platform = process.platform): string {
+  const paths = platform === 'win32' ? path.win32 : path.posix;
   const appData = platform === 'win32' ? env.APPDATA
     : platform === 'darwin' ? path.join(os.homedir(), 'Library', 'Application Support')
       : env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config');
-  if (!appData || !path.isAbsolute(appData)) throw new Error('The current user application-data directory is unavailable.');
-  return path.join(appData, 'CutWright', 'agent-connections');
+  if (!appData || !paths.isAbsolute(appData)) throw new Error('The current user application-data directory is unavailable.');
+  return paths.join(appData, 'CutWright', 'agent-connections');
 }
 
 export async function runNodeMcp(args = process.argv): Promise<void> {
