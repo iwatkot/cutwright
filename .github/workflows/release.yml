@@ -2,13 +2,19 @@ name: Release CutWright
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing app release tag to recover
+        required: true
+        type: string
 permissions:
   contents: read
 concurrency:
   group: cutwright-release
   cancel-in-progress: false
 env:
-  RELEASE_TAG: ${{ github.event.release.tag_name }}
+  RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
 jobs:
   browser:
     name: Build and deploy browser app
@@ -20,13 +26,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ env.RELEASE_TAG }}
           persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: 24
       - name: Inject release version
-        run: node scripts/set-release-version.mjs
+        id: source
+        run: |
+          node scripts/set-release-version.mjs
+          echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:
@@ -40,7 +49,7 @@ jobs:
           platforms: linux/amd64
           tags: iwatkot/cutwright:${{ env.RELEASE_TAG }}
           build-args: |
-            SOURCE_COMMIT=${{ github.sha }}
+            SOURCE_COMMIT=${{ steps.source.outputs.commit }}
             RELEASE_TAG=${{ env.RELEASE_TAG }}
       - name: Deploy tested image by digest
         env:
@@ -52,8 +61,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
         run: |
-          node -e 'require("fs").writeFileSync("app-manifest.json",JSON.stringify({version:process.env.RELEASE_TAG,commit:process.env.GITHUB_SHA,image:"iwatkot/cutwright@"+process.env.IMAGE_DIGEST}))'
+          node -e 'require("fs").writeFileSync("app-manifest.json",JSON.stringify({version:process.env.RELEASE_TAG,commit:process.env.SOURCE_COMMIT,image:"iwatkot/cutwright@"+process.env.IMAGE_DIGEST}))'
           gh release upload "$RELEASE_TAG" app-manifest.json --clobber
   windows:
     name: Build and verify Windows installer
@@ -63,7 +73,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ env.RELEASE_TAG }}
           persist-credentials: false
       - uses: actions/setup-node@v7
         with:
@@ -80,7 +90,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Typecheck failed.' }
           npm test
           if ($LASTEXITCODE -ne 0) { throw 'Unit tests failed.' }
-          npm run dist
+          npm run dist -- --publish never
           if ($LASTEXITCODE -ne 0) { throw 'Windows packaging failed.' }
           node scripts/verify-runtime-notices.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Runtime notice check failed.' }
@@ -94,7 +104,9 @@ jobs:
           $file = "CutWright-Setup-$env:RELEASE_TAG.exe"
           $hash = (Get-FileHash "release/$file" -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $file" | Set-Content release/SHA256SUMS -Encoding utf8NoBOM
-          @{version=$env:RELEASE_TAG;commit=$env:GITHUB_SHA;file=$file;sha256=$hash;bytes=(Get-Item "release/$file").Length} | ConvertTo-Json | Set-Content release/windows-manifest.json -Encoding utf8NoBOM
+          $sourceCommit = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot identify the installer source commit.' }
+          @{version=$env:RELEASE_TAG;commit=$sourceCommit;file=$file;sha256=$hash;bytes=(Get-Item "release/$file").Length} | ConvertTo-Json | Set-Content release/windows-manifest.json -Encoding utf8NoBOM
           gh release upload $env:RELEASE_TAG "release/$file" release/SHA256SUMS release/windows-manifest.json release/smoke-windows.json --clobber
           if ($LASTEXITCODE -ne 0) { throw 'Release asset upload failed.' }
   relay:
@@ -107,10 +119,10 @@ jobs:
       - name: Create matching website release
         env:
           GH_TOKEN: ${{ secrets.RELAY_RELEASE_TOKEN }}
-          PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
           flags=()
-          if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
+          prerelease=$(gh release view "$RELEASE_TAG" --repo iwatkot/cutwright --json isPrerelease --jq .isPrerelease)
+          if [ "$prerelease" = true ]; then flags+=(--prerelease); fi
           if gh release view "$RELEASE_TAG" --repo iwatkot/cutwright-website >/dev/null 2>&1; then
             echo 'Website release already exists; leave the existing release intact.'
           else
