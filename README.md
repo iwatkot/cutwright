@@ -6,6 +6,8 @@ A free video editor for your browser and Windows. Editing and export run on your
 
 Custom-domain setup is pending. The browser editor is already available at https://iwatkot.github.io/cutwright-dist/.
 
+The detailed user manual lives at https://cutwright.cc/docs/ in the separate [website repository](https://github.com/iwatkot/cutwright-website). Contributors must read `AGENTS.md` and `.agents/skills/cutwright-user-docs/SKILL.md`; every feature or user-facing change includes its matching manual update.
+
 CutWright includes a multitrack timeline, titles and graphics, captions, transitions, project sizing, canvas guides, markers, and local MP4 export. Optional external agent connections let a compatible agent client work with the editor; those clients may have their own accounts or costs. See [EXTERNAL_AGENTS.md](EXTERNAL_AGENTS.md) and [RC_SHORTCUTS.md](RC_SHORTCUTS.md).
 
 ## Build from source
