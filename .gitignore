@@ -9,6 +9,18 @@ screenshots/
 tsconfig.tsbuildinfo
 .vitest/
 
+# Personal projects, design explorations and private development notes stay local.
+/.local/
+/projects/
+/design/
+/ACCEPTANCE.md
+/BROWSER.md
+/PRODUCT_GOALS.md
+/RELEASE_CANDIDATE.md
+.env
+.env.*
+!.env.example
+
 # Converted Movavi projects reference the user's original media by absolute
 # path and ship generated PNG assets; regenerate locally with
 # scripts/convert-movavi.mjs — never commit original media or user paths.
