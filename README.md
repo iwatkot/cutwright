@@ -2,7 +2,9 @@
 
 A free video editor for your browser and Windows. Editing and export run on your device, with no account, media upload, render server, or subscription required for the editor.
 
-[Website](https://cutwright.cc) · [Open the browser editor](https://app.cutwright.cc) · [Windows downloads](https://github.com/iwatkot/cutwright-dist/releases/latest)
+[Website](https://cutwright.cc) · [Open the browser editor](https://app.cutwright.cc) · [Windows release candidate](https://github.com/iwatkot/cutwright-dist/releases/tag/v0.2.0-rc.4)
+
+Custom-domain setup is pending. The browser editor is already available at https://iwatkot.github.io/cutwright-dist/.
 
 CutWright includes a multitrack timeline, titles and graphics, captions, transitions, project sizing, canvas guides, markers, and local MP4 export. Optional external agent connections let a compatible agent client work with the editor; those clients may have their own accounts or costs. See [EXTERNAL_AGENTS.md](EXTERNAL_AGENTS.md) and [RC_SHORTCUTS.md](RC_SHORTCUTS.md).
 
