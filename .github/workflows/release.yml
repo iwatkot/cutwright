@@ -1,0 +1,118 @@
+name: Release CutWright
+on:
+  release:
+    types: [published]
+permissions:
+  contents: read
+concurrency:
+  group: cutwright-release
+  cancel-in-progress: false
+env:
+  RELEASE_TAG: ${{ github.event.release.tag_name }}
+jobs:
+  browser:
+    name: Build and deploy browser app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      digest: ${{ steps.image.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Inject release version
+        run: node scripts/set-release-version.mjs
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - id: image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: iwatkot/cutwright:${{ env.RELEASE_TAG }}
+          build-args: |
+            SOURCE_COMMIT=${{ github.sha }}
+            RELEASE_TAG=${{ env.RELEASE_TAG }}
+      - name: Deploy tested image by digest
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: node scripts/deploy-release.mjs app "$RELEASE_TAG" "$IMAGE_DIGEST"
+      - name: Publish browser build identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE_DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          node -e 'require("fs").writeFileSync("app-manifest.json",JSON.stringify({version:process.env.RELEASE_TAG,commit:process.env.GITHUB_SHA,image:"iwatkot/cutwright@"+process.env.IMAGE_DIGEST}))'
+          gh release upload "$RELEASE_TAG" app-manifest.json --clobber
+  windows:
+    name: Build and verify Windows installer
+    runs-on: [self-hosted, Windows, X64, cutwright-windows]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - name: Build and test
+        shell: pwsh
+        run: |
+          node scripts/set-release-version.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Release version injection failed.' }
+          npm ci
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency install failed.' }
+          npm run typecheck
+          if ($LASTEXITCODE -ne 0) { throw 'Typecheck failed.' }
+          npm test
+          if ($LASTEXITCODE -ne 0) { throw 'Unit tests failed.' }
+          npm run dist
+          if ($LASTEXITCODE -ne 0) { throw 'Windows packaging failed.' }
+          node scripts/verify-runtime-notices.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Runtime notice check failed.' }
+          node scripts/smoke-windows-release.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Installed Windows E2E failed.' }
+      - name: Upload installer and checksums to this release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $file = "CutWright-Setup-$env:RELEASE_TAG.exe"
+          $hash = (Get-FileHash "release/$file" -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $file" | Set-Content release/SHA256SUMS -Encoding utf8NoBOM
+          @{version=$env:RELEASE_TAG;commit=$env:GITHUB_SHA;file=$file;sha256=$hash;bytes=(Get-Item "release/$file").Length} | ConvertTo-Json | Set-Content release/windows-manifest.json -Encoding utf8NoBOM
+          gh release upload $env:RELEASE_TAG "release/$file" release/SHA256SUMS release/windows-manifest.json release/smoke-windows.json --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Release asset upload failed.' }
+  relay:
+    name: Release website after both app jobs pass
+    needs: [browser, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Create matching website release
+        env:
+          GH_TOKEN: ${{ secrets.RELAY_RELEASE_TOKEN }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          flags=()
+          if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
+          if gh release view "$RELEASE_TAG" --repo iwatkot/cutwright-website >/dev/null 2>&1; then
+            echo 'Website release already exists; leave the existing release intact.'
+          else
+            gh release create "$RELEASE_TAG" --repo iwatkot/cutwright-website --target main --title "$RELEASE_TAG" --notes "Deploy website for CutWright $RELEASE_TAG after browser deployment and verified Windows upload." "${flags[@]}"
+          fi
