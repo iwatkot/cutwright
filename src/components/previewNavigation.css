@@ -1,0 +1,19 @@
+.canvas-toolbar .canvas-format { flex: 0 1 auto; }
+.canvas-toolbar > .spacer { min-width: 0; }
+.canvas-view-actions { display: flex; align-items: center; gap: 1px; flex: none; }
+.canvas-view-actions .icon-button { width: 27px; min-width: 27px; height: 30px; min-height: 30px; padding: 5px; }
+.canvas-view-actions output { min-width: 38px; text-align: center; color: var(--text-2); font-size: 10px; font-variant-numeric: tabular-nums; }
+.canvas-view-actions .canvas-fit { min-height: 29px; padding: 3px 6px; font-size: 10px; }
+.previewwrap.cw-canvas-workspace .canvas-frame { max-width: none; }
+.canvas-viewport-rulers { position: absolute; inset: 30px 16px 16px 36px; z-index: 13; pointer-events: none; }
+.canvas-viewport-rulers .canvas-ruler { pointer-events: auto; overflow: hidden; }
+.previewwrap.cw-preview-hand, .cw-preview-hand * { cursor: grab !important; }
+.previewwrap.cw-preview-panning, .cw-preview-panning * { cursor: grabbing !important; }
+.previewwrap.cw-canvas-workspace:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.previewwrap.cw-canvas-workspace { touch-action: none; }
+@media (max-width: 1000px) {
+  .canvas-toolbar { gap: 3px; padding-left: 6px; padding-right: 6px; }
+  .canvas-toolbar .canvas-format { padding: 3px 5px; gap: 0; }
+  .canvas-toolbar .canvas-format > span { display: none; }
+  .canvas-view-actions .icon-button { width: 25px; min-width: 25px; }
+}

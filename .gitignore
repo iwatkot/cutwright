@@ -1,0 +1,19 @@
+node_modules/
+dist/
+dist-electron/
+release/
+screenshots/
+*.log
+.DS_Store
+
+tsconfig.tsbuildinfo
+.vitest/
+
+# Converted Movavi projects reference the user's original media by absolute
+# path and ship generated PNG assets; regenerate locally with
+# scripts/convert-movavi.mjs — never commit original media or user paths.
+projects/*.converted.cutwright.json
+projects/*.converted.cutwright.conversion-report.json
+projects/*-assets/
+projects/*.native.cutwright.json
+projects/*.native.cutwright.conversion-report.json

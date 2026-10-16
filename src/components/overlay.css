@@ -1,0 +1,26 @@
+.text-library { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.text-library-tools { padding: 0 12px 10px; display: grid; gap: 7px; border-bottom: 1px solid var(--stroke); }
+.text-library-tools > input { width: 100%; min-width: 0; }
+.text-library-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 10px 12px 16px; }
+.template-count { display: flex; justify-content: space-between; align-items: center; color: var(--text-3); font-size: 9px; letter-spacing: .8px; font-weight: 600; margin: 0 0 9px; }
+.template-count span { letter-spacing: 0; background: var(--hover-bg); border-radius: 8px; padding: 0 5px; }
+.text-template-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px 8px; }
+.text-template { display: flex; align-items: stretch; flex-direction: column; gap: 0; white-space: normal; padding: 0; border: 0; background: transparent; min-width: 0; text-align: left; border-radius: 6px; }
+.text-template:hover:enabled { background: transparent; }
+.text-template-art { width: 100%; aspect-ratio: 16/10; position: relative; overflow: hidden; border-radius: 7px; background: #1c2430; border: 1px solid #ffffff20; transition: border-color .15s; }
+.text-template-art img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.text-template:hover .text-template-art { border-color: var(--accent); }
+.text-template > span { margin-top: 5px; color: var(--text); font-size: 11px; line-height: 1.35; }
+.text-template small { color: var(--text-3); font-size: 9px; margin-top: 1px; }
+.template-layers { position: absolute; bottom: 3px; right: 4px; padding: 0 4px; background: #0b111bbb; border-radius: 3px; color: #d8e1ed; font-size: 7px; }
+.template-motion { position: absolute; top: 3px; right: 5px; color: #a4b9d0; font-size: 11px; }
+.template-note { color: var(--text-3); font-size: 10px; line-height: 1.5; margin: 16px 0 0; }
+.overlay-inspector { display: block; min-width: 0; height: auto; padding: 0; margin: 0; border: 0; background: transparent; overflow: visible; }
+.overlay-inspector textarea { resize: vertical; min-height: 72px; max-height: 200px; font-size: 12px; line-height: 1.5; }
+.overlay-inspector .ui-number input { width: 100%; }
+.inspector-reset { justify-self: start; min-height: 24px; padding: 2px 0; font-size: 10px; background: transparent; color: var(--accent); border-color: transparent; }
+.inspector-reset:hover:enabled { background: transparent; text-decoration: underline; }
+.inspector-note { margin: 0; font-size: 10px; color: var(--text-3); line-height: 1.5; }
+.overlay-save-area { padding: 14px 0; display: grid; gap: 8px; }
+.overlay-save { width: 100%; font-size: 11px; }
+.overlay-save-area p { color: var(--text-3); font-size: 10px; margin: 5px 0 0; text-align: center; }
