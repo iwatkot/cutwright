@@ -1,0 +1,84 @@
+{
+  "name": "cutwright",
+  "version": "0.2.0-rc.4",
+  "description": "CutWright — fast, clean, fully agentic video editor for Windows",
+  "main": "dist-electron/main.js",
+  "author": "CutWright",
+  "license": "MIT",
+  "scripts": {
+    "postinstall": "node scripts/patch-aac-encoder.mjs && node scripts/patch-mediabunny-mp3.mjs",
+    "dev": "tsc -p tsconfig.electron.json && node scripts/build-overlay-renderer.mjs && concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "dev:web": "vite",
+    "build": "tsc -b && vite build && node scripts/prepare-runtime-notices.mjs && tsc -p tsconfig.electron.json && node scripts/build-overlay-renderer.mjs",
+    "build:web": "tsc -b && vite build && node scripts/prepare-runtime-notices.mjs",
+    "dist": "npm run build && electron-builder --win nsis",
+    "dist:dir": "npm run build && electron-builder --win --dir",
+    "dist:web": "node scripts/build-browser-distribution.mjs",
+    "typecheck": "tsc -b --noEmit && tsc -p tsconfig.electron.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ffmpeg/core": "0.12.10",
+    "@ffmpeg/ffmpeg": "0.12.15",
+    "@mediabunny/aac-encoder": "1.61.5",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "ffmpeg-static": "^5.2.0",
+    "mediabunny": "1.61.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "4.6.7",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "electron": "^44.7.2",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "playwright-core": "^1.64.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3",
+    "vitest": "^5.0.5",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "app.cutwright.editor",
+    "productName": "CutWright",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/ffmpeg-static/**"
+    ],
+    "win": {
+      "icon": "public/branding/cutwright.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "CutWright-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "installerIcon": "public/branding/cutwright.ico",
+      "uninstallerIcon": "public/branding/cutwright.ico",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CutWright"
+    }
+  }
+}
