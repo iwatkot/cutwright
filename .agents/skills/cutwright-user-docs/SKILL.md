@@ -5,7 +5,7 @@ description: Maintain CutWright's detailed end-user manual on the website whenev
 
 # CutWright user documentation
 
-The user manual belongs to the separate `cutwright-website` project, in `content/docs/`; generated pages live under `dist/docs/`. Follow the website README for generation and verification. In the shared Windows workspace it is the sibling of the editor checkout. The public website repository is `https://github.com/iwatkot/cutwright-website`.
+The user manual belongs to the separate `cutwright-website` project, in `content/docs/`; generated pages live under `dist/docs/`. Follow the website README for generation and verification. In the shared Windows workspace it is the sibling of the editor checkout. The website source repository, `https://github.com/iwatkot/cutwright-website`, is private; use an authorized checkout. The canonical public app repository is `https://github.com/iwatkot/cutwright`.
 
 ## Keep documentation part of the change
 
