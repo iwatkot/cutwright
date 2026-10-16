@@ -2,9 +2,9 @@
 
 A free video editor for your browser and Windows. Editing and export run on your device, with no account, media upload, render server, or subscription required for the editor.
 
-[Website](https://cutwright.cc) · [Open the browser editor](https://app.cutwright.cc) · [Windows release candidate](https://github.com/iwatkot/cutwright-dist/releases/tag/v0.2.0-rc.4)
+[Website](https://cutwright.cc) · [Open the browser editor](https://app.cutwright.cc) · [Windows download](https://github.com/iwatkot/cutwright/releases/latest)
 
-Custom-domain setup is pending. The browser editor is already available at https://iwatkot.github.io/cutwright-dist/.
+The website and browser editor run on their own domains. The old https://iwatkot.github.io/cutwright-dist/ editor remains a fallback; its browser storage is separate, so save projects and retain original media before changing origins.
 
 The detailed user manual lives at https://cutwright.cc/docs/ and is maintained in a separate private website repository. Contributors must read `AGENTS.md` and `.agents/skills/cutwright-user-docs/SKILL.md`; every feature or user-facing change includes its matching manual update. Website source changes require access to that repository.
 
@@ -60,7 +60,21 @@ To package the browser app together with that version's installer and a distribu
 npm run dist:web
 ```
 
-The complete static package is written to `release/browser/`. This packaging command requires the matching local installer even when `CW_DESKTOP_DOWNLOAD_URL` points to an external HTTPS release download. Published installers and browser distribution artifacts live in [cutwright-dist releases](https://github.com/iwatkot/cutwright-dist/releases).
+The complete static package is written to `release/browser/`. This packaging command requires the matching local installer even when `CW_DESKTOP_DOWNLOAD_URL` points to an external HTTPS release download. New installers, checksums and build manifests live in [CutWright releases](https://github.com/iwatkot/cutwright/releases); the old distribution repository retains historical builds.
+
+## Docker and releases
+
+Run the first release locally with Docker:
+
+```sh
+docker run --rm -p 8080:80 iwatkot/cutwright:0.0.1
+```
+
+Open `http://localhost:8080`. The image serves the browser editor; editing and export still happen on your device. The website also offers compact Docker and source-start command panels beside the Windows download.
+
+Publish one GitHub release in this repository with an unprefixed semantic version, such as `0.0.2`. The release tag supplies the browser UI and Windows package/installer version. The Linux job tests, publishes and deploys the browser image; the Windows runner on `acemagic` tests and packages the installer, then verifies installation, import and native export before uploading it. After both jobs pass, the pipeline creates the same-tag release in the private website repository, which deploys its matching version and verified download link. Website source changes must be on its `main` branch before publishing the app release.
+
+The browser and website expose `/version.json`; app releases include source/image identity and installer checksums. No `v` prefix or manual package-version bump is needed. Rerun failed Actions jobs when appropriate; use a new version for source changes after a release has shipped.
 
 ## Checks
 
