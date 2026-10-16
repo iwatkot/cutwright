@@ -1,0 +1,42 @@
+import { _electron } from 'playwright-core';
+import { mkdtempSync, existsSync, statSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
+const folder = mkdtempSync(path.join(tmpdir(), 'cutwright-release-smoke-'));
+const installer = path.resolve('release', `CutWright-Setup-${version}.exe`);
+const installed = path.join(folder, 'installed');
+const setup = spawnSync(installer, ['/S', `/D=${installed}`], { timeout: 120_000, windowsHide: true });
+assert.equal(setup.status, 0, `Silent installer failed: ${setup.error || setup.status}`);
+const executable = path.join(installed, 'CutWright.exe');
+assert(existsSync(executable), 'Installed executable is missing.');
+const ffmpeg = path.join(installed, 'resources', 'app.asar.unpacked', 'node_modules', 'ffmpeg-static', 'ffmpeg.exe');
+const fixture = path.join(folder, 'release-fixture.mp4'), output = path.join(folder, 'export.mp4');
+const generate = spawnSync(ffmpeg, ['-y', '-f', 'lavfi', '-i', 'testsrc2=size=320x180:rate=24', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000', '-t', '2', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', fixture], { timeout: 30_000, windowsHide: true });
+assert.equal(generate.status, 0, 'Installed Windows FFmpeg could not generate the test media.');
+const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
+const electron = await _electron.launch({ executablePath: executable, args: ['--disable-gpu', `--user-data-dir=${path.join(folder, 'profile')}`], env, timeout: 60_000 });
+try {
+  assert.equal(await electron.evaluate(({ app }) => app.getVersion()), version);
+  await electron.evaluate(({ dialog }, files) => {
+    dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [files.fixture] });
+    dialog.showSaveDialog = async () => ({ canceled: false, filePath: files.output });
+  }, { fixture, output });
+  const page = await electron.firstWindow();
+  await page.locator('.brand-version').waitFor();
+  assert.equal(await page.locator('.brand-version').innerText(), version);
+  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await page.getByText('release-fixture.mp4', { exact: true }).first().click({ timeout: 30_000 });
+  await page.locator('#export-btn').click();
+  const deadline = Date.now() + 120_000;
+  while (Date.now() < deadline && (!existsSync(output) || statSync(output).size < 1000 || await page.locator('#export-btn').innerText().then(text => text.includes('Cancel')))) await new Promise(resolve => setTimeout(resolve, 1000));
+  assert(existsSync(output) && statSync(output).size > 1000, 'Native export did not finish.');
+  const decode = spawnSync(ffmpeg, ['-v', 'error', '-i', output, '-f', 'null', '-'], { timeout: 30_000, windowsHide: true });
+  assert.equal(decode.status, 0, 'The installed app export could not be decoded.');
+  await page.screenshot({ path: 'release/smoke-windows.png' });
+  writeFileSync('release/smoke-windows.json', JSON.stringify({ version, installed: true, nativeVersion: true, visibleVersion: true, imported: true, exported: true, decoded: true, outputBytes: statSync(output).size }, null, 2));
+  console.log(`Installed Windows ${version}: version, import, native export and full decode passed.`);
+} finally { await electron.close(); }

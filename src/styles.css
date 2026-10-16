@@ -116,6 +116,7 @@ a.brand-logo { color: var(--text); text-decoration: none; border-radius: 4px; -w
 a.brand-logo:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .brand-mark { width: 24px; height: 24px; flex: none; object-fit: contain; padding: 2px; border-radius: 4px; background: #f8fafc; }
 .logo .brand-wordmark-accent { color: var(--accent); }
+.brand-version { color: var(--text-2); font-size: 9px; font-weight: 400; letter-spacing: .02em; margin-left: 1px; }
 .project-commands { display: flex; gap: 1px; }
 .project-title { display: flex; align-items: center; min-width: 100px; max-width: 420px; flex: 0 1 420px; gap: 4px; }
 .projname { background: transparent; border-color: transparent; width: 100%; min-width: 80px; min-height: 30px; color: var(--text-2); text-overflow: ellipsis; padding: 3px 6px; }

@@ -1,0 +1,12 @@
+.git
+.local
+node_modules
+dist
+dist-electron
+release
+screenshots
+projects
+design
+.vitest
+*.tsbuildinfo
+.env*
