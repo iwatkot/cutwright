@@ -34,6 +34,17 @@ const call = (port: number, route: string, init: RequestInit = {}) => fetch(`htt
 const pair = (port: number, token = 'a'.repeat(64)) => call(port, '/connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
 
 describe('browser ↔ local MCP connector', () => {
+  it('allows time to answer the browser permission prompt on the first discovery', async () => {
+    const bridge = await server(), controller = createEditorToolController(); controllers.push(controller);
+    const delayedFetch: typeof fetch = async (url, init) => {
+      if (String(url).endsWith('/health')) await new Promise(resolve => setTimeout(resolve, 2800));
+      return fetch(url, { ...init, headers: { ...init?.headers, Origin: origin } });
+    };
+    const value = createBrowserConnector(controller, { fetch: delayedFetch, ports: [bridge.port] }); adapters.push(value);
+    expect(await value.connect('codex')).toBe(true);
+    expect(await bridge.request('get_project', {})).toMatchObject({ ok: true });
+  }, 10000);
+
   it('edits the live project, preserves revision checks and undo/redo, then revokes access', async () => {
     const bridge = await server(), { value, controller } = adapter([bridge.port]);
     expect(await value.connect('codex')).toBe(true);

@@ -59,7 +59,8 @@ export function createBrowserConnector(controller: EditorToolController, options
     update({ checking: true, error: undefined });
     const found = await Promise.all((options.ports ?? CONNECTOR_PORTS).map(async port => {
       try {
-        const info = await json(port, '/health');
+        // A first connection can wait for the browser's local-network permission prompt.
+        const info = await json(port, '/health', {}, options.timeout ?? 20_000);
         return info.application === 'cutwright-connector' && info.protocol === CONNECTOR_PROTOCOL && info.client === client && info.port === port && typeof info.session === 'string' && /^[A-F0-9]{6}$/.test(info.session) ? info as unknown as ConnectorInfo : undefined;
       } catch { return undefined; }
     }));
