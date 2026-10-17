@@ -211,17 +211,19 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
         <span className={`save-state ${dirty ? 'dirty' : ''}`} role="status" data-tooltip={dirty ? uiText("Unsaved changes · local recovery enabled") : uiText("No unsaved changes")}><i />{dirty ? uiText("Unsaved") : uiText("Saved")}</span>
       </div>
       <div className="spacer" />
-      <button className="import-button" onClick={importMedia} data-tooltip={uiText("Import video, audio or images{0}", { 0: importShortcut ? ` (${importShortcut})` : '' })}><IconImport /><span>{uiText("Import")}</span></button>
+      <button className="import-button" aria-label={uiText("Import")} onClick={importMedia} data-tooltip={uiText("Import video, audio or images{0}", { 0: importShortcut ? ` (${importShortcut})` : '' })}><IconImport /><span>{uiText("Import")}</span></button>
       <SelectControl label={uiText("Export preset")} className="export-preset" value={preset} onChange={v => setPreset(v as typeof preset)} options={['source','1080','720','480'].map(value=>{ const size=exportDimensions(project,value==='source'?undefined:Number(value)); return {value,label:value==='source'?uiText("Source"):uiText("{0}p", { 0: value }),description:`${size.width} × ${size.height}${value==='source'?uiText(" · Project size"):''}`}; })} />
       {exporting ? (
-        <button className="primary export-running" id="export-btn" data-tooltip={uiText("{0} · click to cancel", { 0: exportStage && exportStage !== 'Rendering composition' ? visibleExportStage : uiText("Rendering {0}%", { 0: progress }) })} aria-label={uiText("Cancel export · {0}%", { 0: progress })} onClick={() => { if (job) void exportJobs.cancel(job.id); }}><span>{exportStage && exportStage !== 'Rendering composition' ? visibleExportStage : uiText("Rendering {0}%", { 0: progress })}</span>{" "}{uiText("· Cancel")}</button>
+        <button className="primary export-running" id="export-btn" data-tooltip={uiText("{0} · click to cancel", { 0: exportStage && exportStage !== 'Rendering composition' ? visibleExportStage : uiText("Rendering {0}%", { 0: progress }) })} aria-label={uiText("Cancel export · {0}%", { 0: progress })} onClick={() => { if (job) void exportJobs.cancel(job.id); }}><span>{exportStage && exportStage !== 'Rendering composition' ? visibleExportStage : uiText("Rendering {0}%", { 0: progress })}</span><span className="mobile-export-progress" aria-hidden="true">{progress}%</span>{" "}{uiText("· Cancel")}</button>
       ) : (
-        <button className="primary" id="export-btn" onClick={exportMp4} data-tooltip={uiText("Export video{0}", { 0: exportShortcut ? ` (${exportShortcut})` : '' })}><IconExport />{uiText("Export")}</button>
+        <button className="primary" id="export-btn" aria-label={uiText("Export")} onClick={exportMp4} data-tooltip={uiText("Export video{0}", { 0: exportShortcut ? ` (${exportShortcut})` : '' })}><IconExport /><span>{uiText("Export")}</span></button>
       )}
       <div className="tbsep" />
+      <div className="topbar-preferences">
       <ThemeControl />
       <LocaleControl />
       <IconButton label={uiText("Keyboard shortcuts")} action="shortcuts" onClick={onOpenShortcuts}><IconKeyboard /></IconButton>
+      </div>
     </div>
   );
 }

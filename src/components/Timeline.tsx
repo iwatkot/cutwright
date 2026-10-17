@@ -1,6 +1,10 @@
 import { t as uiText } from '../i18n/core';
 import { transitionName } from '../i18n/presentation';
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useCompactLayout } from '../lib/useCompactLayout';
+import { trackPointer, clipGestureReady } from '../lib/timelinePointer';
+import { FloatingSurface, type SurfaceAnchor } from './ui/FloatingSurface';
+import TrackHeader from './TrackHeader';
 import { useStore } from '../lib/store';
 import OverlayInspector from './OverlayInspector';
 import { Field, NumberControl, RangeControl, InspectorSection } from './ui/Controls';
@@ -17,10 +21,7 @@ import { toast } from './TopBar';
 import { mediaUrl } from '../lib/mediaUrl';
 import { overlaySvg, resolveOverlay } from '../lib/overlay';
 import { overlayPreviewTime } from '../lib/overlayAssets';
-import { IconButton, IconPlus, IconAudioPlus, IconClose, IconDelete, IconDots, IconEye, IconEyeOff, IconMuted, IconPlay, IconRedo, IconRipple, IconSnap, IconSplit, IconTrackHeight, IconUndo, IconVideoPlus, IconVolume, IconZoomIn, IconZoomOut } from './icons';
-
-const LABEL_W = 118;
-
+import { IconButton, IconPlus, IconAudioPlus, IconCaptions, IconClose, IconDelete, IconDots, IconPlay, IconRedo, IconRipple, IconSnap, IconSplit, IconTrackHeight, IconUndo, IconVideoPlus, IconZoomIn, IconZoomOut } from './icons';
 function thumbnailUrl(source: string): string {
   // A saved desktop path grants no browser file access, even when a legacy
   // thumbnail still points at an otherwise relinked media entry.
@@ -29,6 +30,12 @@ function thumbnailUrl(source: string): string {
 }
 
 export default function Timeline() {
+  const compact = useCompactLayout();
+  const labelWidth = compact ? 36 : 118;
+  const [actionsAnchor, setActionsAnchor] = useState<SurfaceAnchor | null>(null);
+  const gestureCleanup = useRef<(() => void) | null>(null);
+  const touchTap = useRef<{ id: number; x: number; y: number } | null>(null);
+  useEffect(() => () => gestureCleanup.current?.(), []);
   const addMarkerShortcut = useShortcutLabel('addMarker');
   const project = useStore((s) => s.project);
   const playhead = useStore((s) => s.playhead);
@@ -46,17 +53,23 @@ export default function Timeline() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const canUndo = useStore((s) => s.past.length > 0);
   const canRedo = useStore((s) => s.future.length > 0);
-  const [trackMenu, setTrackMenu] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [trackMenu, setTrackMenu] = useState<{ id: string; x: number; y: number; returnFocus: HTMLButtonElement } | null>(null);
+  const trackMenuRef = useRef<HTMLDivElement>(null);
   const [context, setContext] = useState<{x:number;y:number;time:number;clipId?:string;markerId?:string;transitionId?:string}|null>(null);
   useEffect(() => {
     if (!trackMenu) return;
-    const previous = document.activeElement as HTMLElement | null;
-    requestAnimationFrame(() => document.querySelector<HTMLElement>('.trackmenu button:not(:disabled)')?.focus());
+    const previous = trackMenu.returnFocus;
+    const menu = trackMenuRef.current;
+    const focusFrame = requestAnimationFrame(() => menu?.querySelector<HTMLElement>('button:not(:disabled)')?.focus({ preventScroll: true }));
     const close = () => setTrackMenu(null);
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
     window.addEventListener('click', close);
     window.addEventListener('keydown', key);
-    return () => { window.removeEventListener('click', close); window.removeEventListener('keydown', key); if (previous?.isConnected) previous.focus(); };
+    return () => {
+      cancelAnimationFrame(focusFrame);
+      window.removeEventListener('click', close); window.removeEventListener('keydown', key);
+      if (previous.isConnected && (menu?.contains(document.activeElement) || document.activeElement === document.body)) previous.focus({ preventScroll: true });
+    };
   }, [trackMenu]);
 
   const markerEnd = Math.max(0, ...(project.markers ?? []).map(m => m.time));
@@ -74,38 +87,41 @@ export default function Timeline() {
 
   const scrubAt = (clientX: number, bypass: boolean) => {
     const r = document.getElementById('tl-inner')?.getBoundingClientRect(); if (!r) return;
-    const raw = Math.max(0, (clientX - r.left - LABEL_W) / pxPerSec), st = useStore.getState();
+    const raw = Math.max(0, (clientX - r.left - labelWidth) / pxPerSec), st = useStore.getState();
     const value = st.snapEnabled && !bypass ? snapTimelineTime(raw, (st.project.markers ?? []).map(m => m.time), 7 / pxPerSec) : raw;
     setSnapAt(value !== raw ? value : null); setPlayhead(value);
   };
-  const seekFromEvent = (e: ReactMouseEvent) => {
-    const inner = document.getElementById('tl-inner');
-    if (!inner) return;
-    const r = inner.getBoundingClientRect();
-    scrubAt(e.clientX, e.altKey);
+  const finishTouchTap = (e: ReactPointerEvent<HTMLElement>) => {
+    const tap = touchTap.current;
+    if (!tap || tap.id !== e.pointerId) return;
+    touchTap.current = null;
+    if (Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 8) scrubAt(e.clientX, e.altKey);
   };
 
-  const startScrub = (e: ReactMouseEvent) => {
-    if (e.button !== 0) return;
+  const startScrub = (e: ReactPointerEvent<HTMLElement>) => {
+    if (e.button !== 0 || !e.isPrimary) return;
+    if ((e.target as Element).closest('.tracklabel')) return;
+    if (e.pointerType === 'touch' && !e.currentTarget.classList.contains('ruler')) {
+      touchTap.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      return;
+    }
+    gestureCleanup.current?.();
     // Give keyboard focus back to the editor so Space/C/Ctrl+Z act on the
     // timeline even right after typing in a caption or the project name.
     const ae = document.activeElement as HTMLElement | null;
     if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) ae.blur();
-    seekFromEvent(e);
-    const move = (ev: MouseEvent) => {
-      const inner = document.getElementById('tl-inner');
-      if (!inner) return;
-      const r = inner.getBoundingClientRect();
+    scrubAt(e.clientX, e.altKey);
+    const move = (ev: PointerEvent) => {
       scrubAt(ev.clientX, ev.altKey);
     };
-    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); setSnapAt(null); };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
+    gestureCleanup.current = trackPointer(e, move, () => { setSnapAt(null); gestureCleanup.current = null; });
   };
 
-  const startClipDrag = (e: ReactMouseEvent, clipId: string, mode: 'move' | 'l' | 'r') => {
-    if (e.button !== 0) return;
+  const startClipDrag = (e: ReactPointerEvent<HTMLElement>, clipId: string, mode: 'move' | 'l' | 'r') => {
+    if (e.button !== 0 || !e.isPrimary) return;
     e.stopPropagation();
+    gestureCleanup.current?.();
+    const wasSelected = selectedClipId === clipId;
     // Changing inspector height under a held pointer changes which track is
     // under it. Keep the previous properties until the gesture completes.
     selectClip(clipId);
@@ -116,12 +132,13 @@ export default function Timeline() {
     const startY = e.clientY;
     const orig = { ...clip };
     let curTrack = orig.trackId;
-    const move = (ev: MouseEvent) => {
+    const move = (ev: PointerEvent) => {
       if (!committed) {
-        if (Math.abs(ev.clientX - startX) < 2 && Math.abs(ev.clientY - startY) < 2) return;
+        if (!clipGestureReady(e.pointerType, wasSelected, ev.clientX - startX, ev.clientY - startY)) return;
         useStore.getState().commit();
         committed = true;
       }
+      ev.preventDefault();
       // Cross-track placement: dragging onto another track of the same kind
       // (video→video, audio→audio) moves the clip there.
       if (mode === 'move') {
@@ -165,9 +182,7 @@ export default function Timeline() {
         st.trimClip(clipId,{duration:Math.max(.2,dur)});
       }
     };
-    const up = () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); setSnapAt(null); };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
+    gestureCleanup.current = trackPointer(e, move, () => { setSnapAt(null); gestureCleanup.current = null; });
   };
 
   const ticks = useMemo(() => {
@@ -234,7 +249,7 @@ export default function Timeline() {
   };
 
   return (
-    <div className="timeline">
+    <div className="timeline" style={{ "--track-label-width": `${labelWidth}px` } as React.CSSProperties}>
       <div className="tltools">
         <strong>{uiText("Timeline")}</strong>
         <div className="toolgroup" role="group" aria-label={uiText("History")}>
@@ -245,7 +260,7 @@ export default function Timeline() {
           <IconButton label={uiText("Split")} action="split" disabled={!project.clips.some((c) => playhead > c.start + .1 && playhead < c.start + c.duration - .1)} onClick={split}><IconSplit /></IconButton>
           <IconButton label={uiText('Delete')} action="delete" disabled={!selectedClipId && !selectedSubId && !selectedTransitionId} onClick={() => { const s = useStore.getState(); if (s.selectedTransitionId) { const id = s.selectedTransitionId; s.selectTransition(null); s.removeTransition(id); } else if (s.rippleEnabled) s.deleteSelectedRipple(); else s.deleteSelected(); }}><IconDelete /></IconButton>
         </div>
-        <div className="toolgroup" role="group" aria-label={uiText("Editing behavior")}>
+        {!compact && <><div className="toolgroup" role="group" aria-label={uiText("Editing behavior")}>
           <IconButton label={uiText("Snapping")} aria-pressed={snapEnabled} onClick={() => useStore.getState().setSnap(!snapEnabled)}><IconSnap /></IconButton>
           <IconButton label={uiText("Ripple editing")} aria-pressed={rippleEnabled} onClick={() => useStore.getState().setRipple(!rippleEnabled)}><IconRipple /></IconButton>
         </div>
@@ -253,11 +268,13 @@ export default function Timeline() {
           <IconButton label={uiText("Add video track")} onClick={() => useStore.getState().addTrack('video')}><IconVideoPlus /></IconButton>
           <IconButton label={uiText("Add audio track")} onClick={() => useStore.getState().addTrack('audio')}><IconAudioPlus /></IconButton>
         </div>
-        <TimelineMarkers />
+        </>}
+        <TimelineMarkers compact={compact} />
+        {compact && <IconButton label={uiText("Timeline actions")} aria-haspopup="dialog" aria-expanded={!!actionsAnchor} onClick={e => { const r = e.currentTarget.getBoundingClientRect(); setActionsAnchor(actionsAnchor ? null : {x:r.left,y:r.top-8,bottom:r.bottom+8}); }}><IconDots /></IconButton>}
         <div className="spacer" />
         <span className="timeline-length" data-tooltip={uiText("Project duration")}>{fmtTime(total)}</span>
         <div className="toolgroup zoomtools" role="group" aria-label={uiText("Timeline view")}>
-          <IconButton label={uiText("Track height: {0}px · change size", { 0: rowH })} onClick={() => setRowH(rowH < 56 ? 56 : rowH < 72 ? 72 : 40)}><IconTrackHeight /></IconButton>
+          <IconButton className="track-height-control" label={uiText("Track height: {0}px · change size", { 0: rowH })} onClick={() => setRowH(rowH < 56 ? 56 : rowH < 72 ? 72 : 40)}><IconTrackHeight /></IconButton>
           <IconButton label={uiText("Zoom out")} action="zoomOut" shortcut="−" disabled={pxPerSec <= 4} onClick={() => setZoom(pxPerSec / 1.25)}><IconZoomOut /></IconButton>
           <RangeControl label={uiText("Timeline zoom")} min={4} max={80} value={pxPerSec} onChange={setZoom} />
           <IconButton label={uiText("Zoom in")} action="zoomIn" shortcut="+" disabled={pxPerSec >= 80} onClick={() => setZoom(pxPerSec * 1.25)}><IconZoomIn /></IconButton>
@@ -267,19 +284,19 @@ export default function Timeline() {
         if((e.target as Element).closest('.tracklabel'))return;
         const r=document.getElementById('tl-inner')?.getBoundingClientRect();if(!r)return;
         e.preventDefault();e.stopPropagation();setTrackMenu(null);const target=e.target as Element;
-        setContext({x:e.clientX,y:e.clientY,time:Math.min(86400,Math.max(0,(e.clientX-r.left-LABEL_W)/pxPerSec)),clipId:target.closest<HTMLElement>('[data-context-clip]')?.dataset.contextClip,markerId:target.closest<HTMLElement>('[data-context-marker]')?.dataset.contextMarker,transitionId:target.closest<HTMLElement>('[data-context-transition]')?.dataset.contextTransition});
+        setContext({x:e.clientX,y:e.clientY,time:Math.min(86400,Math.max(0,(e.clientX-r.left-labelWidth)/pxPerSec)),clipId:target.closest<HTMLElement>('[data-context-clip]')?.dataset.contextClip,markerId:target.closest<HTMLElement>('[data-context-marker]')?.dataset.contextMarker,transitionId:target.closest<HTMLElement>('[data-context-transition]')?.dataset.contextTransition});
       }} onKeyDown={e=>{
         if(e.key!=='ContextMenu'&&!(e.shiftKey&&e.key==='F10'))return;
         e.preventDefault();e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();
         setContext({x:r.left+Math.min(r.width-16,160),y:r.top+30,time:playhead});
       }}>
-        <div className={`tlinner ${rowH < 44 ? 'compact' : ''}`} id="tl-inner" style={{ width: width + LABEL_W }}
+        <div className={`tlinner ${rowH < 44 ? 'compact' : ''}`} id="tl-inner" style={{ width: width + labelWidth }}
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
             const inner = document.getElementById('tl-inner');
             const r = inner?.getBoundingClientRect();
-            const dropTime = r ? Math.max(0, (e.clientX - r.left - LABEL_W) / pxPerSec) : useStore.getState().playhead;
+            const dropTime = r ? Math.max(0, (e.clientX - r.left - labelWidth) / pxPerSec) : useStore.getState().playhead;
             const mediaId = e.dataTransfer.getData('cutwright/media');
             const transId = e.dataTransfer.getData('cutwright/transition');
             if (mediaId) { useStore.getState().addClipFromMedia(mediaId); toast(uiText("Added to the end of the timeline")); }
@@ -292,31 +309,38 @@ export default function Timeline() {
               else toast(uiText("Drop a transition onto a video track containing clips."));
             }
           }}>
-          <div className="ruler" style={{ marginLeft: LABEL_W }} onMouseDown={startScrub}>
+          <div className="ruler" style={{ marginLeft: labelWidth }} onPointerDown={startScrub}>
             {ticks.map((t) => (
               <div key={t} className="tick" style={{ left: t * pxPerSec }}>{fmtTime(t)}</div>
             ))}
           </div>
-          <div className="track text" onMouseDown={startScrub}>
-            <div className="tracklabel">{uiText("TXT")}</div>
+          <div className="track text" onPointerDown={startScrub} onPointerUp={finishTouchTap} onPointerCancel={() => { touchTap.current = null; }}>
+            <div className="tracklabel caption-track-label" role={compact ? 'img' : undefined} aria-label={compact ? uiText("Captions") : undefined}>{compact ? <IconCaptions /> : uiText("TXT")}</div>
             {project.subtitles.map((s) => (
               <div key={s.id} role="button" tabIndex={0} onKeyDown={e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();selectSub(s.id);setPlayhead(s.start);}}} className={`subblock ${s.id === selectedSubId ? 'sel' : ''}`}
-                style={{ left: LABEL_W + s.start * pxPerSec, width: Math.max(26, (s.end - s.start) * pxPerSec) }}
+                style={{ left: labelWidth + s.start * pxPerSec, width: Math.max(26, (s.end - s.start) * pxPerSec) }}
                 data-tooltip={`${fmtTime(s.start)} — ${s.text}`}
-                onMouseDown={(e) => { e.stopPropagation(); if(e.button!==0)return;selectSub(s.id); setPlayhead(s.start); }}>
+                onPointerDown={(e) => { e.stopPropagation(); if(e.button!==0)return;selectSub(s.id); setPlayhead(s.start); }}>
                 {s.text}
               </div>
             ))}
           </div>
           {displayTracks.videos.map((id) => renderTrack(id))}
           {displayTracks.audios.map((id) => renderTrack(id))}
-          {(project.markers ?? []).map(m => <button key={m.id} data-context-marker={m.id} className="timeline-marker" style={{ left: LABEL_W + m.time * pxPerSec, '--marker-color': m.color } as React.CSSProperties} aria-label={uiText("Marker {0} at {1}", { 0: m.label, 1: fmtTime(m.time) })} data-tooltip={uiText("{0} · {1} · double-click to edit", { 0: m.label, 1: fmtTime(m.time) })} onMouseDown={e => e.stopPropagation()} onClick={() => setPlayhead(m.time)} onDoubleClick={() => window.dispatchEvent(new CustomEvent('cw-edit-marker', {detail:m.id}))}><span>◆</span><i /></button>)}
-          {snapAt !== null && <div className="timeline-snap-indicator" style={{left: LABEL_W + snapAt * pxPerSec}}><span>{uiText("Snap")}</span></div>}
-          <div className="playhead" style={{ left: LABEL_W + playhead * pxPerSec }} />
+          {(project.markers ?? []).map(m => <button key={m.id} data-context-marker={m.id} className="timeline-marker" style={{ left: labelWidth + m.time * pxPerSec, '--marker-color': m.color } as React.CSSProperties} aria-label={uiText("Marker {0} at {1}", { 0: m.label, 1: fmtTime(m.time) })} data-tooltip={uiText("{0} · {1} · double-click to edit", { 0: m.label, 1: fmtTime(m.time) })} onPointerDown={e => e.stopPropagation()} onClick={() => setPlayhead(m.time)} onDoubleClick={() => window.dispatchEvent(new CustomEvent('cw-edit-marker', {detail:m.id}))}><span>◆</span><i /></button>)}
+          {snapAt !== null && <div className="timeline-snap-indicator" style={{left: labelWidth + snapAt * pxPerSec}}><span>{uiText("Snap")}</span></div>}
+          <div className="playhead" style={{ left: labelWidth + playhead * pxPerSec }} />
         </div>
       </div>
+      {actionsAnchor && compact && <FloatingSurface anchor={actionsAnchor} label={uiText("Timeline actions")} className="mobile-timeline-actions" onClose={() => setActionsAnchor(null)}>
+        <IconButton label={uiText("Snapping")} aria-pressed={snapEnabled} onClick={() => useStore.getState().setSnap(!snapEnabled)}><IconSnap /></IconButton>
+        <IconButton label={uiText("Ripple editing")} aria-pressed={rippleEnabled} onClick={() => useStore.getState().setRipple(!rippleEnabled)}><IconRipple /></IconButton>
+        <IconButton label={uiText("Add video track")} onClick={() => useStore.getState().addTrack("video")}><IconVideoPlus /></IconButton>
+        <IconButton label={uiText("Add audio track")} onClick={() => useStore.getState().addTrack("audio")}><IconAudioPlus /></IconButton>
+        <IconButton label={uiText("Track height: {0}px · change size", {0: rowH})} onClick={() => setRowH(rowH < 56 ? 56 : rowH < 72 ? 72 : 40)}><IconTrackHeight /></IconButton>
+      </FloatingSurface>}
       {context&&<ContextMenu anchor={context} label={uiText("Timeline actions")} onClose={()=>setContext(null)} actions={contextActions()}/>}
-      {trackMenu && <div className="trackmenu" role="menu" aria-label={uiText("{0} track actions", { 0: trackMenu.id.toUpperCase() })} style={{ left: trackMenu.x, top: trackMenu.y }} onClick={(e) => e.stopPropagation()} onKeyDown={e => { const buttons = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')]; const i=buttons.indexOf(document.activeElement as HTMLButtonElement); if (['ArrowDown','ArrowUp','Home','End','Escape'].includes(e.key)) {e.preventDefault();e.stopPropagation(); if(e.key==='Escape'){setTrackMenu(null);return;}const j=e.key==='Home'?0:e.key==='End'?buttons.length-1:(i+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length;buttons[j]?.focus();} }}>
+      {trackMenu && <div ref={trackMenuRef} className="trackmenu" role="menu" aria-label={uiText("{0} track actions", { 0: trackMenu.id.toUpperCase() })} style={{ left: trackMenu.x, top: trackMenu.y }} onClick={(e) => e.stopPropagation()} onKeyDown={e => { const buttons = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')]; const i=buttons.indexOf(document.activeElement as HTMLButtonElement); if (['ArrowDown','ArrowUp','Home','End','Escape'].includes(e.key)) {e.preventDefault();e.stopPropagation(); if(e.key==='Escape'){setTrackMenu(null);return;}const j=e.key==='Home'?0:e.key==='End'?buttons.length-1:(i+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length;buttons[j]?.focus();} }}>
         <div className="menu-label">{trackMenu.id.toUpperCase()}{" "}{uiText("track")}</div>
         <button role="menuitem" disabled={(trackMenu.id.startsWith('v') ? displayTracks.videos : displayTracks.audios).indexOf(trackMenu.id) === 0} onClick={() => { moveTrack(trackMenu.id, -1); setTrackMenu(null); }}>{uiText("Move track up")}</button>
         <button role="menuitem" disabled={(trackMenu.id.startsWith('v') ? displayTracks.videos : displayTracks.audios).at(-1) === trackMenu.id} onClick={() => { moveTrack(trackMenu.id, 1); setTrackMenu(null); }}>{uiText("Move track down")}</button>
@@ -341,27 +365,22 @@ export default function Timeline() {
   // Render keyed rows directly. A component declared inside Timeline receives
   // a new React type on every playhead tick and remounts all thumbnail nodes.
   function renderTrack(kind: string) {
-    const label = kind.toUpperCase();
     const clips = project.clips.filter((c) => c.trackId === kind);
     const settings = project.trackSettings?.[kind] ?? {};
     const isVideo = kind.startsWith('v');
     const empty = clips.length === 0;
     return (
-      <div key={kind} className={`track ${settings.hidden ? 'trackhidden' : ''}`} data-track={kind} style={{ height: empty ? 32 : rowH }} onMouseDown={startScrub}>
-        <div className={`tracklabel ${empty ? 'slim' : ''}`}>
-          <span className="trackname">{label}</span>
-          <span className="trackbtns">
-            {isVideo && <IconButton className="trackbtn" label={`${settings.hidden ? uiText("Show") : uiText("Hide")} ${label}`} aria-pressed={!settings.hidden} onMouseDown={(e) => e.stopPropagation()} onClick={() => useStore.getState().setTrackSettings(kind, { hidden: !settings.hidden })}>{settings.hidden ? <IconEyeOff /> : <IconEye />}</IconButton>}
-            <IconButton className={`trackbtn ${settings.muted ? 'off' : ''}`} label={`${settings.muted ? uiText("Unmute") : uiText("Mute")} ${label}`} aria-pressed={!!settings.muted} onMouseDown={(e) => e.stopPropagation()} onClick={() => useStore.getState().setTrackSettings(kind, { muted: !settings.muted })}>{settings.muted ? <IconMuted /> : <IconVolume />}</IconButton>
-            <IconButton className="trackbtn" label={uiText("{0} track actions", { 0: label })} aria-haspopup="menu" aria-expanded={trackMenu?.id === kind} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); const b = e.currentTarget.getBoundingClientRect(); setTrackMenu(trackMenu?.id === kind ? null : { id: kind, x: b.left, y: Math.max(48, Math.min(window.innerHeight - 155, b.top - 148)) }); }}><IconDots /></IconButton>
-          </span>
-        </div>
+      <div key={kind} className={`track ${settings.hidden ? 'trackhidden' : ''}`} data-track={kind} style={{ height: empty ? 32 : rowH }} onPointerDown={startScrub} onPointerUp={finishTouchTap} onPointerCancel={() => { touchTap.current = null; }}>
+        <TrackHeader trackId={kind} compact={compact} slim={empty} settings={settings} menuOpen={trackMenu?.id === kind} onSettings={patch => useStore.getState().setTrackSettings(kind, patch)} onMenu={(button, returnFocus) => {
+          const b = button.getBoundingClientRect();
+          setTrackMenu(trackMenu?.id === kind ? null : { id: kind, x: b.left, y: Math.max(48, Math.min(window.innerHeight - 155, b.top - 148)), returnFocus });
+        }} />
         {clips.map((c) => (
           <div key={c.id} data-context-clip={c.id} className={`clip ${c.id === selectedClipId ? 'sel' : ''}`}
-            style={{ left: LABEL_W + c.start * pxPerSec, width: Math.max(30, c.duration * pxPerSec), background: c.color }}
+            style={{ left: labelWidth + c.start * pxPerSec, width: Math.max(30, c.duration * pxPerSec), background: c.color }}
             data-tooltip={uiText("{0} · {1} · {2}s (in {3}s)", { 0: c.name, 1: fmtTime(c.start), 2: c.duration.toFixed(1), 3: c.offset.toFixed(1) })}
-            role="button" tabIndex={0} aria-label={uiText("{0}, {1}, {2} seconds", { 0: c.name, 1: fmtTime(c.start), 2: c.duration.toFixed(1) })} onKeyDown={e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();selectClip(c.id);setPlayhead(c.start);}}} onMouseDown={(e) => startClipDrag(e, c.id, 'move')}>
-            <span className="edge l" onMouseDown={(e) => startClipDrag(e, c.id, 'l')} />
+            role="button" tabIndex={0} aria-label={uiText("{0}, {1}, {2} seconds", { 0: c.name, 1: fmtTime(c.start), 2: c.duration.toFixed(1) })} onKeyDown={e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();selectClip(c.id);setPlayhead(c.start);}}} onPointerDown={(e) => startClipDrag(e, c.id, 'move')}>
+            <span className="edge l" onPointerDown={(e) => startClipDrag(e, c.id, 'l')} />
             <span className="clipname">{c.name} · {c.duration.toFixed(1)}{uiText("s")}</span>
             {isVideo && thumbnails.get(c.id) && <span className="filmstrip" style={{ backgroundImage: `url(${JSON.stringify(thumbnails.get(c.id))})` }} />}
             {project.media.find((m) => m.id === c.mediaId)?.peaks?.length ? (
@@ -377,7 +396,7 @@ export default function Timeline() {
                 })()}
               </span>
             ) : null}
-            <span className="edge r" onMouseDown={(e) => startClipDrag(e, c.id, 'r')} />
+            <span className="edge r" onPointerDown={(e) => startClipDrag(e, c.id, 'r')} />
           </div>
         ))}
         {project.transitions.filter((tr) => tr.anchorClipId ? clips.some((c) => c.id === tr.anchorClipId) : kind === displayTracks.videos[displayTracks.videos.length - 1]).map((tr) => {
@@ -385,9 +404,9 @@ export default function Timeline() {
           const w = Math.max(40, tr.duration * pxPerSec);
           return (
             <div key={tr.id} data-context-transition={tr.id} role="button" tabIndex={0} onKeyDown={e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();useStore.getState().selectTransition(tr.id);}}} className={`tltrans ${tr.id === selectedTransitionId ? 'sel' : ''}`}
-              style={{ left: LABEL_W + tr.at * pxPerSec - (tr.entrance ? 0 : w / 2), width: w }}
+              style={{ left: labelWidth + tr.at * pxPerSec - (tr.entrance ? 0 : w / 2), width: w }}
               data-tooltip={uiText("{0} · {1}s — right-click for actions", { 0: (def ? transitionName(def) : uiText("Transition")), 1: tr.duration.toFixed(1) })}
-              onMouseDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={() => useStore.getState().selectTransition(tr.id)}
               onDoubleClick={() => useStore.getState().selectTransition(tr.id)}
               >
@@ -401,7 +420,7 @@ export default function Timeline() {
   }
 }
 
-export function SelectionInspector() {
+export function SelectionInspector({ onClose }: { onClose?: () => void } = {}) {
   const project = useStore(s => s.project);
   const clipId = useStore(s => s.selectedClipId), transitionId = useStore(s => s.selectedTransitionId);
   const gesture = useRef(false);
@@ -412,7 +431,7 @@ export function SelectionInspector() {
   const tr = project.transitions.find(t => t.id === transitionId);
   if (tr) {
     const def = st.allDefs().find(d => d.id === tr.defId);
-    return <div className="selection-properties"><div className="inspector"><div className="insp-main"><div className="insp-title">{(def ? transitionName(def) : uiText("Transition"))}</div><div className="insp-sub">{uiText("At")}{" "}{fmtTime(tr.at)} · {tr.entrance ? uiText("Entrance") : uiText("Between clips")}</div></div><Field label={uiText("Duration")}><NumberControl label={uiText("Transition duration")} min={.1} max={4} step={.1} value={tr.duration} unit="s" onGestureStart={begin} onChange={v => change(() => st.updateTransition(tr.id,v,false,false))} /></Field><RangeControl label={uiText("Transition duration slider")} min={.1} max={4} step={.1} value={tr.duration} onGestureStart={begin} onChange={v => change(() => st.updateTransition(tr.id,v,false,false))} /><button onClick={() => st.updateTransition(tr.id,tr.duration,true)}>{uiText("Apply to all")}</button><button onClick={() => {st.setPlayhead(Math.max(0,tr.at-tr.duration));st.setPlaying(true);}}><IconPlay />{uiText("Preview")}</button><button onClick={() => {st.selectTransition(null);st.removeTransition(tr.id);}}>{uiText("Remove")}</button><IconButton label={uiText("Close transition properties")} onClick={() => st.selectTransition(null)}><IconClose /></IconButton></div></div>;
+    return <div className="selection-properties"><div className="inspector"><div className="insp-main"><div className="insp-title">{(def ? transitionName(def) : uiText("Transition"))}</div><div className="insp-sub">{uiText("At")}{" "}{fmtTime(tr.at)} · {tr.entrance ? uiText("Entrance") : uiText("Between clips")}</div></div><Field label={uiText("Duration")}><NumberControl label={uiText("Transition duration")} min={.1} max={4} step={.1} value={tr.duration} unit="s" onGestureStart={begin} onChange={v => change(() => st.updateTransition(tr.id,v,false,false))} /></Field><RangeControl label={uiText("Transition duration slider")} min={.1} max={4} step={.1} value={tr.duration} onGestureStart={begin} onChange={v => change(() => st.updateTransition(tr.id,v,false,false))} /><button onClick={() => st.updateTransition(tr.id,tr.duration,true)}>{uiText("Apply to all")}</button><button onClick={() => {st.setPlayhead(Math.max(0,tr.at-tr.duration));st.setPlaying(true);}}><IconPlay />{uiText("Preview")}</button><button onClick={() => {st.selectTransition(null);st.removeTransition(tr.id);}}>{uiText("Remove")}</button><IconButton label={uiText("Close transition properties")} onClick={() => onClose ? onClose() : st.selectTransition(null)}><IconClose /></IconButton></div></div>;
   }
   if (!clip) return <div className="selection-empty"><strong>{uiText("Properties")}</strong><p>{uiText("Select a clip, title or transition to edit it.")}</p></div>;
   const overlay = resolveOverlay(clip,project.media.find(m=>m.id===clip.mediaId));
@@ -421,7 +440,7 @@ export function SelectionInspector() {
   const num = (label:string,value:number,property:Partial<Clip>,key:keyof Clip,min=0,max=86400,step=.1,unit?:string) => <Field key={key} label={label}><NumberControl label={label} value={value} min={min} max={max} step={step} unit={unit} onGestureStart={begin} onChange={v=>change(()=>st.updateClip(clip.id,{...property,[key]:v},false))} /></Field>;
   const split = () => {const error=st.splitAtPlayhead();if(error)toast(error);};
   return <div className="selection-properties" key={clip.id}>
-    <div className="selection-header"><strong>{clip.name}</strong><small>{uiText("Track")}{" "}{clip.trackId.toUpperCase()}{clip.linkGroup?uiText(" · Linked audio/video"):''}</small><IconButton label={uiText("Close clip properties")} onClick={()=>st.selectClip(null)}><IconClose /></IconButton></div>
+    <div className="selection-header"><strong>{clip.name}</strong><small>{uiText("Track")}{" "}{clip.trackId.toUpperCase()}{clip.linkGroup?uiText(" · Linked audio/video"):''}</small><IconButton label={uiText("Close clip properties")} onClick={()=>onClose ? onClose() : st.selectClip(null)}><IconClose /></IconButton></div>
     {overlay&&<OverlayInspector clip={clip} />}
     <InspectorSection title={uiText("Timing")}><div className="property-grid">{num(uiText("Start"),clip.start,{},'start',0,86400,.1,'s')}{num(uiText("Length"),clip.duration,{},'duration',.2,86400,.1,'s')}{num(uiText("Speed"),clip.speed??1,{},'speed',.1,8,.05,'×')}{num(uiText("Source in"),clip.offset,{},'offset',0,86400,.1,'s')}</div></InspectorSection>
     {!overlay&&<InspectorSection title={uiText("Audio")} defaultOpen={!visual}><div className="property-grid">{num(uiText("Volume"),audible.volume??1,{},'volume',0,4,.05,'×')}{num(uiText("Fade in"),audible.fadeIn??0,{},'fadeIn',0,86400,.1,'s')}{num(uiText("Fade out"),audible.fadeOut??0,{},'fadeOut',0,86400,.1,'s')}</div>{audible.audioEnvelope&&<p className="hint">{uiText("Fades retain their phase across split clips.")}</p>}<button onClick={()=>st.updateClip(clip.id,{volume:1,fadeIn:0,fadeOut:0,audioEnvelope:undefined})}>{uiText("Reset audio")}</button></InspectorSection>}

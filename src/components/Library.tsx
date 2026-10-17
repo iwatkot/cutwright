@@ -14,6 +14,8 @@ import type { Clip, Subtitle } from '../lib/types';
 import { applyOpsToProject } from '../lib/agentOps';
 import { Field, NumberControl, RangeControl } from './ui/Controls';
 import { useShortcutLabel } from '../lib/shortcutPreferences';
+import { FloatingSurface, type SurfaceAnchor } from './ui/FloatingSurface';
+import { IconSettings } from './icons';
 
 type Tab = 'media' | 'text' | 'elements' | 'transitions' | 'subtitles';
 
@@ -24,33 +26,48 @@ const I = {
   agent: <IconConnection />,
 };
 
-export default function Library({ onOpenSettings }: { onOpenSettings: () => void }) {
+export default function Library({ onOpenSettings, compact, panelOpen, panelAnchor, onOpenPanel, onClosePanel, propertiesOpen, hasSelection, onOpenProperties }: {
+  onOpenSettings: () => void; compact: boolean; panelOpen: boolean; panelAnchor: SurfaceAnchor;
+  onOpenPanel: (anchor: SurfaceAnchor) => void; onClosePanel: () => void;
+  propertiesOpen: boolean; hasSelection: boolean; onOpenProperties: (anchor: SurfaceAnchor) => void;
+}) {
   const agentShortcut = useShortcutLabel('agent');
   const [tab, setTab] = useState<Tab>('media');
+  const rail = useRef<HTMLElement>(null);
+  const anchor = () => {
+    const r = rail.current!.getBoundingClientRect();
+    return r.width < 100
+      ? { x: r.right + 8, y: r.top, bottom: r.top }
+      : { x: 8, y: r.top - 8, bottom: r.top - 8 };
+  };
+  const selectTab = (next: Tab) => { setTab(next); if (compact) { if (panelOpen && tab === next) onClosePanel(); else onOpenPanel(anchor()); } };
+  const panel = <div className="library">
+    {compact && <div className="mobile-panel-heading"><strong>{({media: uiText("Media"), text: uiText("Text"), elements: uiText("Elements"), transitions: uiText("Transitions"), subtitles: uiText("Captions")})[tab]}</strong><IconButton label={uiText("Close")} onClick={onClosePanel}><IconClose /></IconButton></div>}
+    {tab === 'media' && <MediaPanel />}
+    {tab === 'text' && <OverlayLibrary key="text" />}
+    {tab === 'elements' && <OverlayLibrary key="elements" elements />}
+    {tab === 'transitions' && <TransitionsPanel />}
+    {tab === 'subtitles' && <SubtitlesPanel />}
+  </div>;
   return (
     <>
-      <nav className="rail" aria-label={uiText("Tools")}>
-        <RailBtn id="media" active={tab} onSelect={setTab} icon={I.media} label={uiText("Media")} />
-        <RailBtn id="text" active={tab} onSelect={setTab} icon={<IconText />} label={uiText("Text")} />
-        <RailBtn id="elements" active={tab} onSelect={setTab} icon={<IconElements />} label={uiText("Elements")} />
-        <RailBtn id="transitions" active={tab} onSelect={setTab} icon={I.trans} label={uiText("Transitions")} />
-        <RailBtn id="subtitles" active={tab} onSelect={setTab} icon={<IconCaptions />} label={uiText("Captions")} />
+      <nav ref={rail} className="rail" aria-label={uiText("Tools")}>
+        <RailBtn id="media" active={!compact || panelOpen ? tab : null} onSelect={selectTab} icon={I.media} label={uiText("Media")} />
+        <RailBtn id="text" active={!compact || panelOpen ? tab : null} onSelect={selectTab} icon={<IconText />} label={uiText("Text")} />
+        <RailBtn id="elements" active={!compact || panelOpen ? tab : null} onSelect={selectTab} icon={<IconElements />} label={uiText("Elements")} />
+        <RailBtn id="transitions" active={!compact || panelOpen ? tab : null} onSelect={selectTab} icon={I.trans} label={uiText("Transitions")} />
+        <RailBtn id="subtitles" active={!compact || panelOpen ? tab : null} onSelect={selectTab} icon={<IconCaptions />} label={uiText("Captions")} />
+        {compact && <button className={`railbtn ${propertiesOpen ? "on" : ""}`} aria-label={uiText("Properties")} aria-haspopup="dialog" aria-expanded={propertiesOpen} disabled={!hasSelection} onClick={() => propertiesOpen ? onClosePanel() : onOpenProperties(anchor())}><IconSettings /><span>{uiText("Properties")}</span></button>}
         <div className="spacer" />
-        <button className="railbtn" aria-haspopup="dialog" onClick={onOpenSettings} data-tooltip={uiText("Agent connection{0}", { 0: agentShortcut ? ` (${agentShortcut})` : '' })}>{I.agent}<span>{uiText("Agent")}</span></button>
+        <button className="railbtn" aria-label={uiText("Agent")} aria-haspopup="dialog" onClick={onOpenSettings} data-tooltip={uiText("Agent connection{0}", { 0: agentShortcut ? ` (${agentShortcut})` : '' })}>{I.agent}<span>{uiText("Agent")}</span></button>
       </nav>
-      <div className="library">
-        {tab === 'media' && <MediaPanel />}
-        {tab === 'text' && <OverlayLibrary key="text" />}
-        {tab === 'elements' && <OverlayLibrary key="elements" elements />}
-        {tab === 'transitions' && <TransitionsPanel />}
-        {tab === 'subtitles' && <SubtitlesPanel />}
-      </div>
+      {!compact ? panel : panelOpen && <FloatingSurface anchor={panelAnchor} label={uiText("Tools")} className="mobile-panel mobile-library" onClose={onClosePanel}>{panel}</FloatingSurface>}
     </>
   );
 }
 
-function RailBtn({ id, active, onSelect, icon, label }: { id: Tab; active: Tab; onSelect: (tab: Tab) => void; icon: ReactNode; label: string }) {
-  return <button className={`railbtn ${active === id ? 'on' : ''}`} aria-pressed={active === id} onClick={() => onSelect(id)}>{icon}<span>{label}</span></button>;
+function RailBtn({ id, active, onSelect, icon, label }: { id: Tab; active: Tab | null; onSelect: (tab: Tab) => void; icon: ReactNode; label: string }) {
+  return <button className={`railbtn ${active === id ? 'on' : ''}`} aria-label={label} aria-pressed={active === id} onClick={() => onSelect(id)}>{icon}<span>{label}</span></button>;
 }
 
 function Head({ title, sub, action }: { title: string; sub: string; action?: ReactNode }) {

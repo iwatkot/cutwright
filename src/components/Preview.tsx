@@ -452,7 +452,7 @@ export default function Preview() {
           )}
           {!previewDef && (
             <>
-              {composition.length === 0 && <div className="scene" style={{ background: '#000' }}><div className="scenename">{uiText("Empty timeline")}</div><div className="scenesub">{uiText("Add media from the left panel to start")}</div></div>}
+              {composition.length === 0 && <div className="scene" style={{ background: '#000' }}><div className="scenename">{uiText("Empty timeline")}</div><div className="scenesub">{uiText("Import media to start")}</div></div>}
               {composition.map((track) => <div key={track.id} className="scene" data-cw-track={track.id} data-transition={track.transition?.applied.id}
                 style={{ isolation: 'isolate', overflow: 'hidden', pointerEvents: 'none', ...(track.base ? { background: '#000' } : {}) }}>
                 {track.layers.map((layer) => mediaLayer(layer, track.id + '-'))}

@@ -6,6 +6,8 @@ import { validateProject } from './lib/validate';
 import type { Project } from './lib/types';
 import TopBar, { toast } from './components/TopBar';
 import Library from './components/Library';
+import { useCompactLayout } from './lib/useCompactLayout';
+import { FloatingSurface, type SurfaceAnchor } from './components/ui/FloatingSurface';
 import Preview from './components/Preview';
 import Timeline, { SelectionInspector } from './components/Timeline';
 import { isEditorShortcut } from './lib/keyboardScope';
@@ -21,6 +23,18 @@ import { fmtTime } from './lib/srt';
 import { readBrowserRecovery, restoreBrowserMedia, writeBrowserRecovery, type BrowserRecovery } from './lib/browserMedia';
 
 export default function App() {
+  const compact = useCompactLayout();
+  const [mobilePanel, setMobilePanel] = useState<'library' | 'properties' | null>(null);
+  const [panelAnchor, setPanelAnchor] = useState<SurfaceAnchor>({ x: 8, y: 80 });
+  const selectedClipId = useStore(s => s.selectedClipId);
+  const selectedTransitionId = useStore(s => s.selectedTransitionId);
+  const previousClip = useRef(selectedClipId);
+  useEffect(() => {
+    if (previousClip.current !== selectedClipId) setMobilePanel(null);
+    previousClip.current = selectedClipId;
+  }, [selectedClipId]);
+  useEffect(() => { setMobilePanel(null); }, [compact]);
+  const openPanel = (panel: 'library' | 'properties', anchor: SurfaceAnchor) => { setPanelAnchor(anchor); setMobilePanel(panel); };
   const locale = useLocale();
   useEffect(() => { void window.cutwright?.setLocale?.(locale).catch(error => console.warn('Native language preference could not be applied:', error)); }, [locale]);
   useEffect(startAgentConnections, []);
@@ -206,7 +220,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="app" style={{ '--libw': `${layout.lib}px`, '--tlh': `${layout.tl}px` } as React.CSSProperties}>
+    <div className={`app${compact ? ' is-compact' : ''}`} style={{ '--libw': `${layout.lib}px`, '--tlh': `${layout.tl}px` } as React.CSSProperties}>
       <TopBar onOpenShortcuts={() => setShortcutsOpen(true)} />
       {recovery && (
         <div className="recoverybar">
@@ -216,12 +230,13 @@ export default function App() {
         </div>
       )}
       <div className="main">
-        <Library onOpenSettings={() => setSettingsOpen(true)} />
+        <Library compact={compact} panelOpen={mobilePanel === 'library'} panelAnchor={panelAnchor} onOpenPanel={anchor => openPanel('library', anchor)} onClosePanel={() => setMobilePanel(null)} propertiesOpen={mobilePanel === 'properties'} hasSelection={!!(selectedClipId || selectedTransitionId)} onOpenProperties={anchor => openPanel('properties', anchor)} onOpenSettings={() => { setMobilePanel(null); setSettingsOpen(true); }} />
         <div className="splitter-v" role="separator" tabIndex={0} aria-label={uiText("Resize media panel")} aria-orientation="vertical" aria-valuenow={layout.lib} aria-valuemin={210} aria-valuemax={420} onMouseDown={dragSplitter('lib')} onKeyDown={resizeWithKey('lib')} data-tooltip={uiText("Resize media panel · drag or use arrow keys")} />
         <div className="center">
           <Preview />
         </div>
-        <SelectionInspector />
+        {!compact && <SelectionInspector />}
+        {compact && mobilePanel === 'properties' && <FloatingSurface anchor={panelAnchor} label={uiText("Properties")} className="mobile-panel mobile-properties" onClose={() => setMobilePanel(null)}><SelectionInspector onClose={() => setMobilePanel(null)} /></FloatingSurface>}
       </div>
       <div className="splitter-h" role="separator" tabIndex={0} aria-label={uiText("Resize timeline")} aria-orientation="horizontal" aria-valuenow={layout.tl} aria-valuemin={190} aria-valuemax={560} onMouseDown={dragSplitter('tl')} onKeyDown={resizeWithKey('tl')} data-tooltip={uiText("Resize timeline · drag or use arrow keys")} />
       <Timeline />

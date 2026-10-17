@@ -1,6 +1,6 @@
 {
   "name": "cutwright",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "CutWright — fast, clean, fully agentic video editor for Windows",
   "main": "dist-electron/main.js",
   "author": "CutWright",

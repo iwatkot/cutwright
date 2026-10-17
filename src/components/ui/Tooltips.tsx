@@ -55,7 +55,7 @@ export default function Tooltips() {
       if (anchor?.contains(next) || popup.current?.contains(next)) return;
       if (active || pending) hideTimer = window.setTimeout(hide, 100);
     };
-    const focus = (event: FocusEvent) => { const anchor = target(event.target); if (anchor) show(anchor, 120); else hide(); };
+    const focus = (event: FocusEvent) => { const anchor = target(event.target); if (anchor?.matches(':focus-visible')) show(anchor, 120); else hide(); };
     const blur = (event: FocusEvent) => { if (target(event.target) !== target(event.relatedTarget)) { blocked = null; hide(); } };
     const key = (event: KeyboardEvent) => { if (event.key === 'Escape') { blocked = active ?? pending; hide(); } };
     const dismiss = (event: Event) => { if (event.target instanceof Node && popup.current?.contains(event.target)) return; blocked = active ?? pending ?? target(event.target); hide(); };
