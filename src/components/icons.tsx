@@ -44,6 +44,11 @@ export const IconMuted = () => base(<><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z
 export const IconCollapse = () => base(<><path d="m10 5.5 6.5 6.5L10 18.5" /></>);
 export const IconChat = () => base(<><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /><circle cx="19" cy="17" r="2" /></>);
 export const IconConnection = () => base(<><path d="m9 15 6-6M8 12l-2 2a4 4 0 0 0 6 6l2-2M10 6l2-2a4 4 0 0 1 6 6l-2 2" /></>);
+export const IconTerminal = () => base(<><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></>);
+export const IconAsterisk = () => base(<><path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/></>);
+export const IconGlobe = () => base(<><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></>);
+export const IconCopy = () => base(<><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></>);
+export const IconChevronRight = () => base(<path d="m9 5 7 7-7 7"/>);
 export const IconPlus = () => base(<><path d="M12 5v14M5 12h14" /></>);
 export const IconClose = () => base(<path d="m6 6 12 12M18 6 6 18" />);
 export const IconUnlink = () => base(<><path d="m9 8 3-3a4 4 0 0 1 6 6l-2 2M15 16l-3 3a4 4 0 0 1-6-6l2-2M3 3l18 18" /></>);

@@ -22,7 +22,7 @@ export function createWebMcpAdapter(controller: EditorToolController, environmen
   const listeners = new Set<(status: WebMcpStatus) => void>();
   let current: WebMcpStatus = { supported: false, registered: false, toolCount: 0, context: null };
   let activeContext: WebMcpContext | undefined, registration: AbortController | undefined;
-  let names: string[] = [], disposed = false, queue: Promise<unknown> = Promise.resolve();
+  let names: string[] = [], disposed = false, active = true, queue: Promise<unknown> = Promise.resolve();
   const status = () => ({ ...current });
   const update = (next: WebMcpStatus) => { current = next; listeners.forEach((listener) => { try { listener(status()); } catch { /* UI observers do not control registrations. */ } }); };
   function context() {
@@ -42,7 +42,7 @@ export function createWebMcpAdapter(controller: EditorToolController, environmen
   }
   async function reconcile(): Promise<WebMcpStatus> {
     const found = context();
-    if (disposed || !controller.enabled || !found) {
+    if (disposed || !active || !controller.enabled || !found) {
       await clear(); update({ supported: !!found, registered: false, toolCount: 0, context: found?.kind ?? null }); return status();
     }
     const definitions = controller.listTools();
@@ -52,11 +52,13 @@ export function createWebMcpAdapter(controller: EditorToolController, environmen
     const signal = registration.signal;
     try {
       for (const definition of definitions) {
-        if (disposed || !controller.enabled || signal.aborted) break;
+        if (disposed || !active || !controller.enabled || signal.aborted) break;
         names.push(definition.name);
-        await found.api.registerTool({ ...definition, execute: (args) => controller.execute(definition.name, args) }, { signal });
+        await found.api.registerTool({ ...definition, execute: (args) => signal.aborted || !active
+          ? Promise.resolve({ ok: false, revision: controller.status.revision, error: { code: 'DISABLED', message: 'This WebMCP connection was revoked.' } })
+          : controller.execute(definition.name, args) }, { signal });
       }
-      if (disposed || !controller.enabled || signal.aborted) {
+      if (disposed || !active || !controller.enabled || signal.aborted) {
         await clear(); update({ supported: true, registered: false, toolCount: 0, context: found.kind });
       } else update({ supported: true, registered: names.length === definitions.length && names.length > 0, toolCount: names.length, context: found.kind });
     } catch (error) {
@@ -77,7 +79,7 @@ export function createWebMcpAdapter(controller: EditorToolController, environmen
     void refresh();
   });
   void refresh();
-  return { refresh, get status() { return status(); }, subscribe(listener: (status: WebMcpStatus) => void) { listeners.add(listener); return () => listeners.delete(listener); },
+  return { refresh, async setActive(value: boolean) { active = value; if (!active) registration?.abort(); return refresh(); }, get status() { return status(); }, subscribe(listener: (status: WebMcpStatus) => void) { listeners.add(listener); return () => listeners.delete(listener); },
     async dispose(): Promise<void> { if (disposed) { await queue; return; } disposed = true; registration?.abort(); unsubscribe(); await refresh(); listeners.clear(); },
   };
 }

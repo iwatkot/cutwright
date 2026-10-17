@@ -66,6 +66,11 @@ jobs:
         run: |
           node -e 'require("fs").writeFileSync("app-manifest.json",JSON.stringify({version:process.env.RELEASE_TAG,commit:process.env.SOURCE_COMMIT,image:"iwatkot/cutwright@"+process.env.IMAGE_DIGEST}))'
           gh release upload "$RELEASE_TAG" app-manifest.json --clobber
+      - name: Attach verified browser connector downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_COMMIT: ${{ steps.source.outputs.commit }}
+        run: node scripts/publish-connectors.mjs
   windows:
     name: Build and verify Windows installer
     runs-on: [self-hosted, Windows, X64, cutwright-windows]
@@ -94,6 +99,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Unit tests failed.' }
           npm run dist -- --publish never
           if ($LASTEXITCODE -ne 0) { throw 'Windows packaging failed.' }
+          node scripts/smoke-connectors.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged agent connector checks failed.' }
           node scripts/verify-runtime-notices.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Runtime notice check failed.' }
           # Recovery uses the workflow's test harness against the unchanged release build.

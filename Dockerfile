@@ -7,7 +7,7 @@ COPY . .
 ARG SOURCE_COMMIT
 ARG RELEASE_TAG
 ENV CW_SOURCE_COMMIT=$SOURCE_COMMIT RELEASE_TAG=$RELEASE_TAG
-RUN node scripts/set-release-version.mjs && npm run typecheck && npm test && npm run build:web && node scripts/audit-rc-widgets.mjs
+RUN node scripts/set-release-version.mjs && npm run typecheck && npm test && npm run build:web && node scripts/smoke-connectors.mjs && node scripts/audit-rc-widgets.mjs
 
 FROM nginx:stable-alpine
 COPY deployment/nginx.conf /etc/nginx/conf.d/default.conf

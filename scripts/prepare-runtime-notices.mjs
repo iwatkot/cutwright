@@ -62,6 +62,7 @@ export function prepareRuntimeNotices(output = path.join(projectRoot, 'dist', 't
     || !mp3Expected.includes(hash(path.join(mp3, 'dist/modules/src/isobmff/isobmff-demuxer.js')))) {
     throw new Error('Runtime source corrections do not match the version/hash-pinned patches. Run the reviewed postinstall scripts before building.');
   }
+  copy(path.join(root, 'LICENSE'), 'CutWright-LICENSE.txt');
   const packages = runtimePackages(root);
   const dependencies = packages.map(({ directory, info }) => {
     const slug = `${info.name.replaceAll('@', '').replaceAll('/', '-')}-${info.version}`;

@@ -20,7 +20,7 @@
 <p align="center">
   <a href="https://github.com/iwatkot/cutwright/releases/latest"><img alt="Deployed version" src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapp.cutwright.cc%2Fversion.json&amp;query=%24.version&amp;label=version&amp;style=flat-square&amp;color=149ee8"></a>
   <a href="https://github.com/iwatkot/cutwright/actions/workflows/release.yml"><img alt="Release pipeline" src="https://img.shields.io/github/actions/workflow/status/iwatkot/cutwright/release.yml?style=flat-square&amp;label=release"></a>
-  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-34a76f?style=flat-square"></a>
+  <a href="LICENSE"><img alt="AGPL-3.0 license" src="https://img.shields.io/badge/license-AGPL--3.0-34a76f?style=flat-square"></a>
   <a href="https://hub.docker.com/r/iwatkot/cutwright"><img alt="Docker pulls" src="https://img.shields.io/docker/pulls/iwatkot/cutwright?style=flat-square&amp;logo=docker&amp;logoColor=white"></a>
   <a href="https://github.com/iwatkot/cutwright/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/iwatkot/cutwright?style=flat-square"></a>
 </p>
@@ -103,9 +103,11 @@ Click **Agent** at the bottom of the editor's left rail, then follow the connect
 | Edition | Connection |
 | --- | --- |
 | **Windows app** | Enable local MCP and copy the displayed configuration into a compatible MCP client. Keep the editor open. |
-| **Browser** | Requires an agent browser/client that exposes WebMCP. Ordinary browsers can edit and export, but may show the connection as unavailable. |
+| **Browser → Codex** | Install the small connector once using the command in **Agent → Codex → Setup instructions**, then connect the current tab. Requires Node.js 22+. |
+| **Browser → Claude** | Install the downloadable CutWright `.mcpb` extension once, then choose **Agent → Claude → Connect**. Uses Claude's bundled Node runtime. |
+| **Browser → WebMCP** | Enable WebMCP and use a compatible browser agent's chat. This option remains independent of the desktop connectors. |
 
-Agent access is optional and starts disabled. Your agent runs in its own app; its provider may have separate accounts or costs. Disconnect from the editor to revoke access. See the [user connection guide](https://cutwright.cc/docs/agents/) and [developer tool contract](EXTERNAL_AGENTS.md).
+Agent access is optional and starts disabled. The browser connectors run on your computer and pair with the tab you choose; no CutWright Windows editor or hosted relay is needed. Your browser may ask for local network permission. Keep the tab open and use your agent's own conversation. **Disconnect** revokes access; edits remain undoable. See the complete [connection and troubleshooting guide](https://cutwright.cc/docs/agents/).
 
 ## Development
 
@@ -136,7 +138,7 @@ node scripts/audit-rc-widgets.mjs
 
 After building, `node scripts/verify-runtime-notices.mjs` checks bundled dependency notices. The release pipeline also installs the Windows package and checks import, controls, local export, and full video/audio decode using generated fixtures.
 
-Contributors should read [AGENTS.md](AGENTS.md). Every user-facing change includes the corresponding update to the website's detailed manual; its source lives in a separate private repository. Keep personal media, projects, credentials, and build outputs out of commits.
+The website hosts the complete user manual. Keep personal media, projects, credentials, internal prompts and build outputs out of commits.
 
 ### Release
 
@@ -150,6 +152,6 @@ Push website changes to its `main` branch before creating the app release. The d
 
 ## License
 
-CutWright source is licensed under the **[MIT License](LICENSE)**. Third-party dependencies retain their own licenses. Keep the bundled `third-party/` notices with redistributed browser and desktop builds.
+CutWright is licensed under **[GNU AGPL-3.0](LICENSE)**. You may use, modify and redistribute it, including commercially. Covered redistributed versions must provide corresponding source under the same license; modified versions offered over a network must offer source to their users. Third-party dependencies retain their own licenses. Keep the bundled `third-party/` notices with redistributed browser and desktop builds. Earlier releases retain the license under which they were published.
 
 Made by [iwatkot](https://github.com/iwatkot) · [Website](https://cutwright.cc) · [Buy me a coffee](https://buymeacoffee.com/iwatkot)

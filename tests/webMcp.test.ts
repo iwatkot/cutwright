@@ -19,6 +19,17 @@ function modernApi() {
 }
 
 describe('document WebMCP lifecycle adapter', () => {
+  it('keeps local connector access separate and revokes old WebMCP handles after switching methods', async () => {
+    const api = modernApi(), { c, a } = setup(api); await a.refresh();
+    const saved = api.tools.get('get_project')!;
+    await a.setActive(false);
+    expect(c.enabled).toBe(true); expect(api.tools.size).toBe(0);
+    expect(await saved.execute({})).toMatchObject({ ok: false, error: { code: 'DISABLED' } });
+    await a.setActive(true);
+    expect(api.tools.size).toBe(7);
+    expect(await saved.execute({})).toMatchObject({ ok: false, error: { code: 'DISABLED' } });
+    expect(await api.tools.get('get_project')!.execute({})).toMatchObject({ ok: true });
+  });
   it('registers document tools with narrow schema/read-only hints and the actual controller', async () => {
     useStore.getState().setProject(demoProject(), true);
     const api = modernApi(), fallback = modernApi(), c = createEditorToolController({ enabled: true }); controllers.push(c);

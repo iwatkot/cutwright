@@ -1,21 +1,22 @@
 {
   "name": "cutwright",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "CutWright — fast, clean, fully agentic video editor for Windows",
   "main": "dist-electron/main.js",
   "author": "CutWright",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "scripts": {
     "postinstall": "node scripts/patch-aac-encoder.mjs && node scripts/patch-mediabunny-mp3.mjs",
     "dev": "tsc -p tsconfig.electron.json && node scripts/build-overlay-renderer.mjs && concurrently -k \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "dev:web": "vite",
-    "build": "tsc -b && vite build && node scripts/prepare-runtime-notices.mjs && tsc -p tsconfig.electron.json && node scripts/build-overlay-renderer.mjs",
-    "build:web": "tsc -b && vite build && node scripts/prepare-runtime-notices.mjs",
+    "build": "tsc -b && node scripts/build-connectors.mjs && vite build && node scripts/prepare-runtime-notices.mjs && tsc -p tsconfig.electron.json && node scripts/build-overlay-renderer.mjs",
+    "build:web": "tsc -b && node scripts/build-connectors.mjs && vite build && node scripts/prepare-runtime-notices.mjs",
     "dist": "npm run build && electron-builder --win nsis",
     "dist:dir": "npm run build && electron-builder --win --dir",
     "dist:web": "node scripts/build-browser-distribution.mjs",
-    "typecheck": "tsc -b --noEmit && tsc -p tsconfig.electron.json --noEmit",
-    "test": "vitest run"
+    "typecheck": "tsc -b --noEmit && tsc -p tsconfig.electron.json --noEmit && tsc -p tsconfig.connector.json",
+    "test": "vitest run",
+    "build:connectors": "node scripts/build-connectors.mjs"
   },
   "dependencies": {
     "@ffmpeg/core": "0.12.10",
@@ -30,6 +31,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@anthropic-ai/mcpb": "2.1.2",
     "@types/node": "^22.10.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
@@ -39,6 +41,7 @@
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.2",
     "playwright-core": "^1.64.1",
+    "smol-toml": "1.9.1",
     "typescript": "^5.7.2",
     "vite": "^6.0.3",
     "vitest": "^5.0.5",

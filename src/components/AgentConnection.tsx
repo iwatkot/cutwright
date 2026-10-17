@@ -1,30 +1,71 @@
 import { useEffect, useRef, useState } from 'react';
-import { agentConnection } from '../lib/agentConnection';
-import { IconClose, IconConnection } from './icons';
-import { useDialogFocus } from './ui/Controls';
+import { agentConnection, type AgentMethod } from '../lib/agentConnection';
+import { APP_VERSION } from '../version';
+import { IconClose, IconConnection, IconTerminal, IconAsterisk, IconGlobe, IconCopy, IconChevronRight, IconButton } from './icons';
+import { ToggleGroup, SelectControl, useDialogFocus } from './ui/Controls';
+import './agentConnection.css';
 
+const source = `https://github.com/iwatkot/cutwright/tree/${APP_VERSION}`;
+const guide = 'https://cutwright.cc/docs/agents/';
+function configured(method: AgentMethod): boolean {
+  try { return localStorage.getItem(`cutwright.connectorConfigured.${method}`) === 'true'; } catch { return false; }
+}
+function CopyCommand({ text, label = 'Copy command' }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false), [error, setError] = useState(false);
+  return <><div className="connection-command"><code>{text}</code><IconButton label={copied ? 'Copied' : label} onClick={() => { void navigator.clipboard.writeText(text).then(() => { setCopied(true); setError(false); }).catch(() => setError(true)); }}><IconCopy /></IconButton></div>{error && <p role="status">Select the command to copy it. Clipboard access was unavailable.</p>}</>;
+}
 export default function AgentConnection({ onClose }: { onClose: () => void }) {
-  const dialog = useRef<HTMLElement>(null);
+  const dialog = useRef<HTMLElement>(null), setup = useRef<HTMLDetailsElement>(null);
   useDialogFocus(dialog, onClose);
   const [status, setStatus] = useState(agentConnection.status);
-  const [copied, setCopied] = useState(false);
-  const [copyError, setCopyError] = useState(false);
+  const [installed, setInstalled] = useState(configured(status.method));
+  const [session, setSession] = useState('');
   useEffect(() => agentConnection.subscribe(() => setStatus(agentConnection.status)), []);
-  const desktop = !!window.cutwright;
-  const available = desktop || status.web.supported;
+  useEffect(() => { setInstalled(configured(status.method)); setSession(''); if (setup.current) setup.current.open = false; }, [status.method]);
+  useEffect(() => {
+    if (status.local.connected && setup.current) setup.current.open = false;
+    if (status.local.connected) { setInstalled(true); try { localStorage.setItem(`cutwright.connectorConfigured.${status.method}`, 'true'); } catch { /* Preferences are optional. */ } }
+  }, [status.local.connected, status.method]);
+  const desktop = !!window.cutwright, web = status.method === 'webmcp';
+  const name = status.method === 'claude' ? 'Claude' : 'Codex';
+  const busy = status.busy || status.local.checking;
+  const error = status.desktop.error || (desktop ? undefined : web ? status.web.error : status.local.error);
+  const unavailable = !desktop && web && !status.web.supported;
+  const enabled = status.enabled;
   const configuration = status.desktop.command ? JSON.stringify({ mcpServers: { cutwright: { command: status.desktop.command, args: status.desktop.args, env: status.desktop.env } } }, null, 2) : '';
-  const error = status.desktop.error || status.web.error;
+  const connector = `${import.meta.env.BASE_URL}connectors/${APP_VERSION}/cutwright-connector-${APP_VERSION}.cjs`;
+  const extension = `${import.meta.env.BASE_URL}connectors/${APP_VERSION}/cutwright-claude-${APP_VERSION}.mcpb`;
+  const installCommand = `node "$HOME/Downloads/cutwright-connector-${APP_VERSION}.cjs" --install-codex`;
+  const connect = () => { void agentConnection.setEnabled(true, session ? Number(session) : undefined); };
+  const primary = () => {
+    if (enabled) { void agentConnection.setEnabled(false); return; }
+    if (desktop || web || installed || error || status.local.candidates.length) connect();
+    else if (setup.current) setup.current.open = !setup.current.open;
+  };
+  const label = busy ? 'Connecting…' : enabled ? 'Disconnect' : desktop ? 'Enable connection' : web ? 'Enable WebMCP' : installed || error || status.local.candidates.length ? 'Connect' : `Set up ${name}`;
+  const statusLabel = desktop ? enabled ? 'Local MCP enabled' : 'Disconnected' : web ? unavailable ? 'WebMCP unavailable in this browser' : enabled ? 'WebMCP enabled' : 'WebMCP available' : busy ? 'Checking connector…' : enabled ? `Connected to ${name}` : error && !status.local.candidates.length ? 'Connector not found' : installed ? 'Disconnected' : 'One-time setup required';
   return <div className="modalback" onClick={onClose}>
-    <section ref={dialog} className="modal connection-modal" role="dialog" aria-modal="true" aria-labelledby="connection-title" tabIndex={-1} onClick={(event) => event.stopPropagation()}>
-      <div className="connection-heading"><IconConnection /><h2 id="connection-title">Agent connection</h2><button className="icon-button" aria-label="Close connection settings" onClick={onClose}><IconClose /></button></div>
-      <p>Work with your agent in its own app. Connect it here to read the live project, apply edits, use undo and redo, and control local exports.</p>
-      <div className="connection-status" role="status"><i className={status.enabled ? 'connected' : ''} />{status.enabled ? `${desktop ? 'Local MCP' : 'WebMCP'} enabled` : 'Disconnected'}</div>
-      {desktop ? <p>Enable the connection, then add the configuration below to your agent’s MCP settings. Keep this editor open. This configuration reconnects to this editor profile after restart.</p> : <p>{status.web.supported ? 'This browser supports WebMCP. Enable the connection, then use your browser agent’s own chat to work with this project.' : 'This browser does not expose WebMCP. Open this editor in a compatible agent browser to connect. Editing and local export remain available here.'}</p>}
+    <section ref={dialog} className="modal connection-modal" role="dialog" aria-modal="true" aria-labelledby="connection-title" tabIndex={-1} onClick={event => event.stopPropagation()}>
+      <div className="connection-heading"><IconConnection /><h2 id="connection-title">Agent connection</h2><IconButton label="Close connection settings" onClick={onClose}><IconClose /></IconButton></div>
+      <p className="connection-intro">Use your own agent with this project.</p>
+      {!desktop && <div className="connection-methods"><ToggleGroup label="Connection method" value={status.method} options={[
+        { value: 'codex', label: 'Codex', icon: <><IconTerminal /><span>Codex</span></>, disabled: busy },
+        { value: 'claude', label: 'Claude', icon: <><IconAsterisk /><span>Claude</span></>, disabled: busy },
+        { value: 'webmcp', label: 'WebMCP', icon: <><IconGlobe /><span>WebMCP</span></>, disabled: busy },
+      ]} onChange={value => { void agentConnection.setMethod(value as AgentMethod); }} /></div>}
+      <div className="connection-status" role="status"><i className={enabled || web && !unavailable ? 'connected' : ''} />{statusLabel}</div>
+      <p className="connection-description">{desktop ? 'Enable access and add the configuration to your agent’s MCP settings.' : web ? unavailable ? 'Use a compatible agent browser, or choose Codex or Claude.' : 'Use your browser agent’s chat to work with this project.' : enabled ? 'Ask your agent to inspect this project. Keep this tab open.' : installed ? `Open ${name} with its CutWright connector enabled, then connect this tab.` : 'Install a small connector. Keep editing in your browser.'}</p>
+      {!desktop && !web && status.local.candidates.length > 1 && !enabled && <div className="connection-session"><SelectControl label="Agent session" value={session} options={[{ value: '', label: 'Choose agent session', disabled: true }, ...status.local.candidates.map(info => ({ value: String(info.port), label: `${name} · ${info.session}${info.paired ? ' (another tab)' : ''}`, disabled: info.paired }))]} onChange={setSession} /></div>}
       {error && <p className="connection-error" role="alert">{error}</p>}
-      <div className="row"><button className={status.enabled ? '' : 'primary'} disabled={status.busy || !available} onClick={() => void agentConnection.setEnabled(!status.enabled)}>{status.busy ? 'Updating…' : status.enabled ? 'Disconnect' : 'Enable connection'}</button></div>
-      {desktop && status.enabled && configuration && <div className="connection-config"><h3>MCP configuration</h3><pre tabIndex={0}>{configuration}</pre><button onClick={() => { void Promise.resolve().then(() => navigator.clipboard.writeText(configuration)).then(() => { setCopied(true); setCopyError(false); }).catch(() => { setCopyError(true); setCopied(false); }); }}>{copied ? 'Copied' : 'Copy configuration'}</button>{copyError && <p role="status">Select the configuration text to copy it. Clipboard access was unavailable.</p>}</div>}
-      <h3>Recent agent actions</h3>
-      {status.history.length ? <ol className="connection-history">{status.history.slice(-12).reverse().map((entry) => <li key={entry.id}><span className={entry.outcome === 'rejected' ? 'rejected' : ''}>{entry.tool.replaceAll('_', ' ')}</span><p>{entry.summary}</p><time>{new Date(entry.timestamp).toLocaleTimeString()}</time></li>)}</ol> : <p className="connection-empty">Agent actions will appear here.</p>}
+      <div className="row"><button className={enabled ? '' : 'primary'} disabled={busy || unavailable} onClick={primary}>{label}</button></div>
+      {desktop && enabled && configuration && <div className="connection-config"><h3>MCP configuration</h3><CopyCommand text={configuration} label="Copy configuration" /></div>}
+      <details ref={setup} className="connection-setup"><summary><IconChevronRight />Setup instructions</summary><div className="connection-steps">
+        {desktop ? <ol><li>Click <strong>Enable connection</strong> and copy the configuration.</li><li>In Codex, add the command, arguments and environment in <strong>Settings → MCP servers</strong>. In Claude, add the configuration in its local MCP settings.</li><li>Restart the agent if requested. Keep CutWright open and ask it to inspect the project.</li></ol> : web ? <ol><li>Open this project in a <strong>WebMCP-compatible agent browser</strong>.</li><li>Click <strong>Enable WebMCP</strong> and keep this tab open.</li><li>In your browser agent’s chat, ask it to inspect the CutWright project. Enabling WebMCP alone does not attach an agent.</li></ol> : status.method === 'claude' ? <><ol><li><a href={extension} download>Download the CutWright extension</a>.</li><li>In Claude, open <strong>Settings → Extensions → Advanced settings → Install Extension</strong> and select the downloaded <strong>.mcpb</strong> file. Enable it and restart Claude if requested.</li><li>Open a Claude conversation, return here and click <strong>Connect</strong>. Keep this tab open. Allow local network access if your browser asks.</li></ol>{!installed && !enabled && !error && !status.local.candidates.length && <button disabled={busy} onClick={connect}>Connect</button>}</> : <><ol><li>Install <a href="https://nodejs.org/en/download" target="_blank" rel="noopener noreferrer">Node.js 22 or newer</a> if needed, then <a href={connector} download>download the CutWright connector</a> to Downloads.</li><li>Run this command in PowerShell on Windows, or Terminal on macOS/Linux:<CopyCommand text={installCommand} /></li><li>Restart Codex and open a new conversation. Return here and click <strong>Connect</strong>. Keep this tab open. Allow local network access if your browser asks.</li></ol>{!installed && !enabled && !error && !status.local.candidates.length && <button disabled={busy} onClick={connect}>Connect</button>}</>}
+      </div></details>
+      <details className="connection-activity"><summary><IconChevronRight />Recent actions <span>{status.history.length}</span></summary>
+        {status.history.length ? <ol className="connection-history">{status.history.slice(-12).reverse().map(entry => <li key={entry.id}><span className={entry.outcome === 'rejected' ? 'rejected' : ''}>{entry.tool.replaceAll('_', ' ')}</span><p>{entry.summary}</p><time>{new Date(entry.timestamp).toLocaleTimeString()}</time></li>)}</ol> : <p className="connection-empty">Agent actions will appear here.</p>}
+      </details>
+      <footer className="connection-footer"><a href={`${guide}${desktop ? '#connect-on-windows' : web ? '#connect-in-browser' : `#connect-${status.method}`}`} target="_blank" rel="noopener noreferrer">Full guide ↗</a><a href={source} target="_blank" rel="noopener noreferrer">Source code · AGPL-3.0 ↗</a></footer>
     </section>
   </div>;
 }

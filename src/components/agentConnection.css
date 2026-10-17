@@ -1,0 +1,32 @@
+.modal.connection-modal { width: min(540px, 92vw); }
+.connection-heading h2 { margin: 0; }
+.connection-intro { margin: 10px 0 20px; }
+.connection-methods { width: max-content; max-width: 100%; padding: 3px; background: var(--input-bg); border: 1px solid var(--stroke); border-radius: 8px; }
+.connection-methods .ui-toggle-group { border: 0; background: transparent; gap: 3px; }
+.connection-methods .ui-toggle-group button { display: flex; align-items: center; gap: 7px; padding: 6px 12px; min-height: 34px; width: auto; border: 1px solid transparent; border-radius: 5px; color: var(--text-2); }
+.connection-methods .ui-toggle-group button[aria-pressed="true"] { background: var(--selection-bg); color: var(--accent); border-color: var(--stroke-strong); }
+.connection-methods svg { width: 16px; height: 16px; }
+.connection-modal .connection-status { margin: 24px 0 7px; color: var(--text); font-weight: 500; }
+.connection-description { margin: 0 0 16px; }
+.connection-setup { margin-top: 16px; }
+.connection-modal details > summary { display: flex; gap: 7px; align-items: center; min-height: 34px; list-style: none; color: var(--text-2); cursor: pointer; }
+.connection-modal details > summary::-webkit-details-marker { display: none; }
+.connection-modal details > summary > svg { width: 14px; height: 14px; flex: none; }
+.connection-modal details[open] > summary > svg { transform: rotate(90deg); }
+.connection-modal summary:focus-visible, .connection-modal a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.connection-steps { padding: 2px 0 4px 21px; color: var(--text-2); }
+.connection-steps ol { margin: 4px 0 12px; padding-left: 18px; }
+.connection-steps li { padding: 3px 0 3px 3px; }
+.connection-steps a, .connection-footer a { color: var(--accent); text-decoration: none; }
+.connection-steps a:hover, .connection-footer a:hover { text-decoration: underline; }
+.connection-command { display: flex; align-items: start; gap: 6px; margin: 8px 0; padding: 8px; background: var(--input-bg); border: 1px solid var(--stroke); border-radius: 6px; }
+.connection-command code { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; flex: 1; user-select: text; font: 11px/1.6 Consolas, monospace; }
+.connection-command .icon-button { flex: none; }
+.connection-session { margin: 10px 0; max-width: 300px; }
+.connection-activity { margin-top: 14px; padding-top: 11px; border-top: 1px solid var(--stroke); }
+.connection-activity summary span { margin-left: auto; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.connection-activity .connection-empty { margin: 5px 0 5px 21px; color: var(--text-3); }
+.connection-footer { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; font-size: 11px; }
+.connection-modal .connection-config h3 { margin-top: 8px; }
+.connection-modal .connection-error { overflow-wrap: anywhere; font-size: 12px; }
+@media (max-width: 420px) { .connection-modal { padding: 18px; } .connection-methods .ui-toggle-group button { padding: 6px 8px; gap: 5px; } }

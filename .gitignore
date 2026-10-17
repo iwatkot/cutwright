@@ -11,6 +11,12 @@ tsconfig.tsbuildinfo
 
 # Personal projects, design explorations and private development notes stay local.
 /.local/
+/public/connectors/
+/AGENTS.md
+/.agents/
+/EXTERNAL_AGENTS.md
+/RC_SHORTCUTS.md
+/docs/assets/*.prompt.txt
 /projects/
 /design/
 /ACCEPTANCE.md

@@ -1,9 +1,0 @@
-Generated with the built-in image_gen tool on 2026-10-17.
-
-Use case: ads-marketing.
-Asset type: a finished landscape GitHub README hero banner for the open-source CutWright video editor, approximately 2.7:1, 1536x576 composition.
-Primary request: a clean, premium, beautifully restrained software-project cover. Match CutWright's existing cool studio aesthetic: near-black charcoal, quiet steel blue, bright cyan-blue accents, crisp white typography. Dark background with subtle depth and soft studio lighting. Generous negative space and calm hierarchy.
-Composition: large legible CutWright wordmark toward the left-center, with a small understated line beneath. Right third has an elegant abstract arrangement of three offset editing timeline strips and a fine vertical playhead, with a few blue illuminated edges, suggesting precise video cuts. This is abstract brand artwork, not a fake app screenshot. Keep everything away from image edges. Readable at GitHub content width.
-Text verbatim (only these two lines): "CutWright" and "Agentic video editing."
-Typography: modern confident sans serif, correct uppercase C and W in CutWright, white with a subtle blue accent on Wright if tasteful.
-Constraints: finished raster banner; no badges, buttons, version number, people, robot mascots, extra slogans, grids of icons, watermarks or illegible UI text. Do not imitate the Maps4FS image; create original imagery appropriate to editing video. Opaque background.
