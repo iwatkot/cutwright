@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore, emptyProject, uid } from '../lib/store';
 import { exportJobs } from '../lib/exportJobs';
-import { agentConnection } from '../lib/agentConnection';
 import { validateProject } from '../lib/validate';
 import { isBrowserMediaSource, restoreBrowserMedia, storeBrowserFile } from '../lib/browserMedia';
 import type { Project } from '../lib/types';
-import { IconButton, IconConnection, IconExport, IconFilePlus, IconFolderOpen, IconHelp, IconImport, IconSave } from './icons';
+import { IconButton, IconExport, IconFilePlus, IconFolderOpen, IconKeyboard, IconImport, IconSave } from './icons';
+import { useShortcutLabel } from '../lib/shortcutPreferences';
 import { SelectControl } from './ui/Controls';
 import { ThemeControl } from './ui/theme';
 import { exportDimensions } from '../lib/outputDimensions';
@@ -27,7 +27,9 @@ function projectFingerprint(project: Project): string {
   return JSON.stringify({ ...project, media: project.media.map((m) => ({ ...m, thumb: undefined, peaks: undefined, offline: undefined })) });
 }
 
-export default function TopBar({ onOpenSettings, onOpenShortcuts }: { onOpenSettings: () => void; onOpenShortcuts: () => void }) {
+export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => void }) {
+  const exportShortcut = useShortcutLabel('export');
+  const importShortcut = useShortcutLabel('importMedia');
   const project = useStore((s) => s.project);
   const [dirty, setDirty] = useState(false);
   const savedRef = useRef('');
@@ -44,7 +46,6 @@ export default function TopBar({ onOpenSettings, onOpenShortcuts }: { onOpenSett
   const setProject = useStore((s) => s.setProject);
   const addMedia = useStore((s) => s.addMedia);
   const [job, setJob] = useState(exportJobs.latest());
-  const [connectionEnabled, setConnectionEnabled] = useState(agentConnection.status.enabled);
   const exporting = !!job && ['queued', 'running'].includes(job.status);
   const progress = Math.round((job?.progress ?? 0) * 100);
   const exportStage = job?.stage ?? '';
@@ -57,8 +58,7 @@ export default function TopBar({ onOpenSettings, onOpenShortcuts }: { onOpenSett
       if (current.status === 'completed') { notified.current = current.id; toast(`Rendered ${inElectron ? '→' : 'locally →'} ${current.outputPath || current.fileName}`); }
       if (current.status === 'cancelled' || current.status === 'failed') { notified.current = current.id; toast(current.status === 'cancelled' ? 'Export cancelled' : `Export failed: ${current.error}`); }
     });
-    const offConnection = agentConnection.subscribe(() => setConnectionEnabled(agentConnection.status.enabled));
-    return () => { offJobs(); offConnection(); };
+    return () => { offJobs(); };
   }, []);
   const notified = useRef('');
 
@@ -181,6 +181,12 @@ export default function TopBar({ onOpenSettings, onOpenShortcuts }: { onOpenSett
     } catch (err) { toast(`Import failed: ${err instanceof Error ? err.message : String(err)}`); }
   };
 
+  const newProject = () => { projectSession.current++; setProject(emptyProject()); useStore.getState().setPlaying(false); useStore.getState().setPlayhead(0); window.dispatchEvent(new Event('cw-project-loaded')); };
+  useEffect(() => {
+    const create = () => newProject(), importFiles = () => { void importMedia(); };
+    window.addEventListener('cw-new', create); window.addEventListener('cw-import', importFiles);
+    return () => { window.removeEventListener('cw-new', create); window.removeEventListener('cw-import', importFiles); };
+  }, [project]);
   const exportMp4 = async () => {
     try { await exportJobs.start({ preset }); }
     catch (error) { toast(`Export failed: ${error instanceof Error ? error.message : String(error)}`); }
@@ -190,9 +196,9 @@ export default function TopBar({ onOpenSettings, onOpenShortcuts }: { onOpenSett
     <div className={`topbar${inElectron ? '' : ' browser-topbar'}`}>
       <BrandLogo />
       <div className="project-commands" role="group" aria-label="Project commands">
-        <IconButton label="New" onClick={() => { projectSession.current++; setProject(emptyProject()); useStore.getState().setPlaying(false); useStore.getState().setPlayhead(0); window.dispatchEvent(new Event('cw-project-loaded')); }}><IconFilePlus /></IconButton>
-        <IconButton label="Open" shortcut="Ctrl+O" onClick={openProject}><IconFolderOpen /></IconButton>
-        <IconButton label="Save" shortcut="Ctrl+S" onClick={saveProject}><IconSave /></IconButton>
+        <IconButton label="New" action="newProject" onClick={newProject}><IconFilePlus /></IconButton>
+        <IconButton label="Open" action="openProject" onClick={openProject}><IconFolderOpen /></IconButton>
+        <IconButton label="Save" action="saveProject" onClick={saveProject}><IconSave /></IconButton>
       </div>
       <div className="tbsep" />
       <div className="project-title">
@@ -200,17 +206,16 @@ export default function TopBar({ onOpenSettings, onOpenShortcuts }: { onOpenSett
         <span className={`save-state ${dirty ? 'dirty' : ''}`} role="status" data-tooltip={dirty ? 'Unsaved changes · local recovery enabled' : 'No unsaved changes'}><i />{dirty ? 'Unsaved' : 'Saved'}</span>
       </div>
       <div className="spacer" />
-      <button className="import-button" onClick={importMedia} data-tooltip="Import video, audio or images"><IconImport /><span>Import</span></button>
+      <button className="import-button" onClick={importMedia} data-tooltip={`Import video, audio or images${importShortcut ? ` (${importShortcut})` : ''}`}><IconImport /><span>Import</span></button>
       <SelectControl label="Export preset" className="export-preset" value={preset} onChange={v => setPreset(v as typeof preset)} options={['source','1080','720','480'].map(value=>{ const size=exportDimensions(project,value==='source'?undefined:Number(value)); return {value,label:value==='source'?'Source':`${value}p`,description:`${size.width} × ${size.height}${value==='source'?' · Project size':''}`}; })} />
       {exporting ? (
         <button className="primary export-running" id="export-btn" data-tooltip={`${exportStage && exportStage !== 'Rendering composition' ? exportStage : `Rendering ${progress}%`} · click to cancel`} aria-label={`Cancel export · ${progress}%`} onClick={() => { if (job) void exportJobs.cancel(job.id); }}><span>{exportStage && exportStage !== 'Rendering composition' ? exportStage : `Rendering ${progress}%`}</span> · Cancel</button>
       ) : (
-        <button className="primary" id="export-btn" onClick={exportMp4} data-tooltip="Export video (Ctrl+E)"><IconExport />Export</button>
+        <button className="primary" id="export-btn" onClick={exportMp4} data-tooltip={`Export video${exportShortcut ? ` (${exportShortcut})` : ''}`}><IconExport />Export</button>
       )}
       <div className="tbsep" />
       <ThemeControl />
-      <IconButton label="Agent connection" shortcut="Ctrl+/" aria-pressed={connectionEnabled} onClick={onOpenSettings}><IconConnection /></IconButton>
-      <IconButton label="Keyboard shortcuts" onClick={onOpenShortcuts}><IconHelp /></IconButton>
+      <IconButton label="Keyboard shortcuts" action="shortcuts" onClick={onOpenShortcuts}><IconKeyboard /></IconButton>
     </div>
   );
 }

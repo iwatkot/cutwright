@@ -1,0 +1,11 @@
+.modal.shortcut-settings{width:min(700px,calc(100vw - 32px));max-height:calc(100svh - 40px);display:flex;flex-direction:column;gap:10px;padding:18px;overflow:hidden}
+.shortcut-heading{display:flex;align-items:center;gap:9px}.shortcut-heading h2{margin:0;flex:1}.shortcut-heading>svg{width:19px;height:19px;color:var(--accent)}
+.shortcut-search{width:100%;min-height:30px}.shortcut-help{margin:0;color:var(--text-2);font-size:11px;line-height:1.5}
+.shortcut-list{flex:1 1 auto;overflow:auto;min-height:0;padding-right:5px}.shortcut-list h3{color:var(--text-2);font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin:14px 0 6px}.shortcut-list section:first-child h3{margin-top:3px}
+.shortcut-row{display:grid;grid-template-columns:minmax(140px,1fr) minmax(0,1.75fr);gap:10px;align-items:center;min-height:39px;padding:5px 0;border-bottom:1px solid var(--stroke)}
+.shortcut-row>span{font-size:12px}.shortcut-row small{display:block;font-size:10px;color:var(--text-2);margin-top:3px}.shortcut-bindings{display:flex;align-items:center;flex-wrap:wrap;gap:5px;min-width:0}
+.shortcut-binding{display:inline-flex;align-items:center;border:1px solid var(--stroke);border-radius:5px;background:var(--panel)}.shortcut-binding>button{min-height:26px;padding:3px 7px;border:0;background:transparent;font-size:11px;white-space:nowrap}.shortcut-binding .shortcut-remove{padding:3px;width:22px;min-width:22px;color:var(--text-2)}.shortcut-remove svg{width:11px;height:11px}
+.shortcut-bindings>.icon-button{width:25px;min-width:25px;min-height:26px;height:26px;padding:5px}.shortcut-bindings>.icon-button svg{width:13px;height:13px}.shortcut-binding .recording,.shortcut-pending{color:var(--accent);background:var(--panel-2)}.shortcut-pending{font-size:11px;padding:5px 7px;border:1px solid var(--accent);border-radius:4px}.shortcut-unassigned{font-size:11px;color:var(--text-2)}
+.shortcut-feedback{margin:0;min-height:30px;font-size:11px;line-height:1.4;color:var(--text-2)}.shortcut-feedback.error{color:var(--danger,#e15c6a)}.shortcut-footer{display:flex;justify-content:space-between;gap:8px}
+@media(max-width:550px){.modal.shortcut-settings{padding:13px}.shortcut-row{grid-template-columns:1fr;gap:4px}.shortcut-list{padding-right:2px}}
+.shortcut-heading,.shortcut-help,.shortcut-search,.shortcut-footer,.shortcut-feedback{flex-shrink:0}

@@ -10,6 +10,7 @@ import { overlaySvg } from '../lib/overlay';
 import type { Clip, Subtitle } from '../lib/types';
 import { applyOpsToProject } from '../lib/agentOps';
 import { Field, NumberControl, RangeControl } from './ui/Controls';
+import { useShortcutLabel } from '../lib/shortcutPreferences';
 
 type Tab = 'media' | 'text' | 'elements' | 'transitions' | 'subtitles';
 
@@ -21,6 +22,7 @@ const I = {
 };
 
 export default function Library({ onOpenSettings }: { onOpenSettings: () => void }) {
+  const agentShortcut = useShortcutLabel('agent');
   const [tab, setTab] = useState<Tab>('media');
   return (
     <>
@@ -31,7 +33,7 @@ export default function Library({ onOpenSettings }: { onOpenSettings: () => void
         <RailBtn id="transitions" active={tab} onSelect={setTab} icon={I.trans} label="Transitions" />
         <RailBtn id="subtitles" active={tab} onSelect={setTab} icon={<IconCaptions />} label="Captions" />
         <div className="spacer" />
-        <button className="railbtn" onClick={onOpenSettings} data-tooltip="Agent connection (Ctrl+/)">{I.agent}<span>Connect</span></button>
+        <button className="railbtn" aria-haspopup="dialog" onClick={onOpenSettings} data-tooltip={`Agent connection${agentShortcut ? ` (${agentShortcut})` : ''}`}>{I.agent}<span>Agent</span></button>
       </nav>
       <div className="library">
         {tab === 'media' && <MediaPanel />}
@@ -205,7 +207,7 @@ function TransitionsPanel() {
     const result = applyOpsToProject(state.project, state.allDefs(), clips.slice(1).map((clip) => ({ type: 'applyTransition' as const, defId, at: clip.start, clipId: clip.id })));
     if (!result.applied.length) { toast(result.rejected[0] ?? 'No transitions could be applied.'); return; }
     state.setProject(result.project);
-    toast(`“${name}” added at ${result.applied.length} cut(s) on ${track.toUpperCase()}. Ctrl+Z undoes them together.`);
+    toast(`“${name}” added at ${result.applied.length} cut(s) on ${track.toUpperCase()}. Use Undo to reverse them together.`);
   };
   const create = () => {
     if (!draft.trim()) return;

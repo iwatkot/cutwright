@@ -3,12 +3,13 @@ import { useStore } from '../lib/store';
 import OverlayInspector from './OverlayInspector';
 import { Field, NumberControl, RangeControl, InspectorSection } from './ui/Controls';
 import { snapTimelineTime } from '../lib/canvasGeometry';
-import TimelineMarkers, { useMarkerShortcuts } from './TimelineMarkers';
+import TimelineMarkers from './TimelineMarkers';
 import ContextMenu, { type ContextAction } from './ui/ContextMenu';
 import './timeline-rc.css';
 import type { Clip } from '../lib/types';
 import { IconUnlink } from './icons';
 import { fmtTime } from '../lib/srt';
+import { useShortcutLabel } from '../lib/shortcutPreferences';
 import { BUILTIN_TRANSITIONS } from '../lib/transitions';
 import { toast } from './TopBar';
 import { mediaUrl } from '../lib/mediaUrl';
@@ -26,6 +27,7 @@ function thumbnailUrl(source: string): string {
 }
 
 export default function Timeline() {
+  const addMarkerShortcut = useShortcutLabel('addMarker');
   const project = useStore((s) => s.project);
   const playhead = useStore((s) => s.playhead);
   const pxPerSec = useStore((s) => s.pxPerSec);
@@ -34,7 +36,7 @@ export default function Timeline() {
   const selectedTransitionId = useStore((s) => s.selectedTransitionId);
   const selectedClipId = useStore((s) => s.selectedClipId);
   const selectedSubId = useStore((s) => s.selectedSubId);
-  useMarkerShortcuts();
+
   const [snapAt, setSnapAt] = useState<number | null>(null);
   const selectClip = useStore((s) => s.selectClip);
   const selectSub = useStore((s) => s.selectSub);
@@ -234,12 +236,12 @@ export default function Timeline() {
       <div className="tltools">
         <strong>Timeline</strong>
         <div className="toolgroup" role="group" aria-label="History">
-          <IconButton label="Undo" shortcut="Ctrl+Z" disabled={!canUndo} onClick={() => useStore.getState().undo()}><IconUndo /></IconButton>
-          <IconButton label="Redo" shortcut="Ctrl+Y" disabled={!canRedo} onClick={() => useStore.getState().redo()}><IconRedo /></IconButton>
+          <IconButton label="Undo" action="undo" disabled={!canUndo} onClick={() => useStore.getState().undo()}><IconUndo /></IconButton>
+          <IconButton label="Redo" action="redo" disabled={!canRedo} onClick={() => useStore.getState().redo()}><IconRedo /></IconButton>
         </div>
         <div className="toolgroup" role="group" aria-label="Clip editing">
-          <IconButton label="Split" shortcut="C / Ctrl+K" disabled={!project.clips.some((c) => playhead > c.start + .1 && playhead < c.start + c.duration - .1)} onClick={split}><IconSplit /></IconButton>
-          <IconButton label="Delete" shortcut="Delete" disabled={!selectedClipId && !selectedSubId && !selectedTransitionId} onClick={() => { const s = useStore.getState(); if (s.selectedTransitionId) { const id = s.selectedTransitionId; s.selectTransition(null); s.removeTransition(id); } else if (s.rippleEnabled) s.deleteSelectedRipple(); else s.deleteSelected(); }}><IconDelete /></IconButton>
+          <IconButton label="Split" action="split" disabled={!project.clips.some((c) => playhead > c.start + .1 && playhead < c.start + c.duration - .1)} onClick={split}><IconSplit /></IconButton>
+          <IconButton label="Delete" action="delete" disabled={!selectedClipId && !selectedSubId && !selectedTransitionId} onClick={() => { const s = useStore.getState(); if (s.selectedTransitionId) { const id = s.selectedTransitionId; s.selectTransition(null); s.removeTransition(id); } else if (s.rippleEnabled) s.deleteSelectedRipple(); else s.deleteSelected(); }}><IconDelete /></IconButton>
         </div>
         <div className="toolgroup" role="group" aria-label="Editing behavior">
           <IconButton label="Snapping" aria-pressed={snapEnabled} onClick={() => useStore.getState().setSnap(!snapEnabled)}><IconSnap /></IconButton>
@@ -254,9 +256,9 @@ export default function Timeline() {
         <span className="timeline-length" data-tooltip="Project duration">{fmtTime(total)}</span>
         <div className="toolgroup zoomtools" role="group" aria-label="Timeline view">
           <IconButton label={`Track height: ${rowH}px · change size`} onClick={() => setRowH(rowH < 56 ? 56 : rowH < 72 ? 72 : 40)}><IconTrackHeight /></IconButton>
-          <IconButton label="Zoom out" shortcut="−" disabled={pxPerSec <= 4} onClick={() => setZoom(pxPerSec / 1.25)}><IconZoomOut /></IconButton>
+          <IconButton label="Zoom out" action="zoomOut" shortcut="−" disabled={pxPerSec <= 4} onClick={() => setZoom(pxPerSec / 1.25)}><IconZoomOut /></IconButton>
           <RangeControl label="Timeline zoom" min={4} max={80} value={pxPerSec} onChange={setZoom} />
-          <IconButton label="Zoom in" shortcut="+" disabled={pxPerSec >= 80} onClick={() => setZoom(pxPerSec * 1.25)}><IconZoomIn /></IconButton>
+          <IconButton label="Zoom in" action="zoomIn" shortcut="+" disabled={pxPerSec >= 80} onClick={() => setZoom(pxPerSec * 1.25)}><IconZoomIn /></IconButton>
         </div>
       </div>
       <div className="tlscroll" ref={scrollRef} tabIndex={0} aria-label="Timeline tracks" onContextMenu={e=>{
@@ -325,7 +327,7 @@ export default function Timeline() {
     if(!context)return [];
     const at=context.time, st=useStore.getState();
     const actions:ContextAction[]=[
-      {label:'Add marker',hint:'Ctrl+M',icon:<IconPlus/>,disabled:(project.markers?.length??0)>=1000,run:()=>{st.setPlaying(false);st.setPlayhead(at);const id=st.addMarker(at);if(id)window.dispatchEvent(new CustomEvent('cw-edit-marker',{detail:id}));}},
+      {label:'Add marker',hint:addMarkerShortcut || undefined,icon:<IconPlus/>,disabled:(project.markers?.length??0)>=1000,run:()=>{st.setPlaying(false);st.setPlayhead(at);const id=st.addMarker(at);if(id)window.dispatchEvent(new CustomEvent('cw-edit-marker',{detail:id}));}},
       {label:'Move playhead here',run:()=>{st.setPlaying(false);st.setPlayhead(at);}},
     ];
     if(context.markerId){const id=context.markerId;actions.push({label:'Edit marker',run:()=>window.dispatchEvent(new CustomEvent('cw-edit-marker',{detail:id}))},{label:'Delete marker',icon:<IconDelete/>,danger:true,run:()=>st.removeMarker(id)});}
@@ -423,6 +425,6 @@ export function SelectionInspector() {
     {!overlay&&<InspectorSection title="Audio" defaultOpen={!visual}><div className="property-grid">{num('Volume',audible.volume??1,{},'volume',0,4,.05,'×')}{num('Fade in',audible.fadeIn??0,{},'fadeIn',0,86400,.1,'s')}{num('Fade out',audible.fadeOut??0,{},'fadeOut',0,86400,.1,'s')}</div>{audible.audioEnvelope&&<p className="hint">Fades retain their phase across split clips.</p>}<button onClick={()=>st.updateClip(clip.id,{volume:1,fadeIn:0,fadeOut:0,audioEnvelope:undefined})}>Reset audio</button></InspectorSection>}
     {visual&&<InspectorSection title="Transform" defaultOpen={!overlay}><div className="property-grid">{num('Scale',clip.scale??1,{},'scale',.1,3,.05,'×')}{num('Opacity',clip.opacity??1,{},'opacity',0,1,.05)}<Field label="Horizontal offset"><NumberControl label="Horizontal offset" value={(clip.posX??0)*project.width/100} min={-project.width/2} max={project.width/2} unit="px" onGestureStart={begin} onChange={v=>change(()=>st.updateClip(clip.id,{posX:v/project.width*100},false))}/></Field><Field label="Vertical offset"><NumberControl label="Vertical offset" value={(clip.posY??0)*project.height/100} min={-project.height/2} max={project.height/2} unit="px" onGestureStart={begin} onChange={v=>change(()=>st.updateClip(clip.id,{posY:v/project.height*100},false))}/></Field>{num('Rotation',clip.rotate??0,{},'rotate',-180,180,1,'°')}</div><button onClick={()=>st.updateClip(clip.id,{scale:1,opacity:1,posX:0,posY:0,rotate:0})}>Reset transform</button></InspectorSection>}
     {visual&&<InspectorSection title="Color" defaultOpen={false}><div className="property-grid">{num('Brightness',clip.brightness??1,{},'brightness',0,2,.05)}{num('Contrast',clip.contrast??1,{},'contrast',0,2,.05)}{num('Saturation',clip.saturation??1,{},'saturation',0,3,.05)}</div><button onClick={()=>st.updateClip(clip.id,{brightness:1,contrast:1,saturation:1})}>Reset color</button></InspectorSection>}
-    <div className="selection-actions">{clip.linkGroup&&<IconButton label="Unlink audio and video" onClick={()=>st.unlinkClip(clip.id)}><IconUnlink /></IconButton>}<IconButton label="Split selected clip" shortcut="C / Ctrl+B" onClick={split}><IconSplit /></IconButton><IconButton label="Delete selected clip" shortcut="Delete" onClick={()=>st.rippleEnabled?st.deleteSelectedRipple():st.deleteSelected()}><IconDelete /></IconButton></div>
+    <div className="selection-actions">{clip.linkGroup&&<IconButton label="Unlink audio and video" onClick={()=>st.unlinkClip(clip.id)}><IconUnlink /></IconButton>}<IconButton label="Split selected clip" action="split" onClick={split}><IconSplit /></IconButton><IconButton label="Delete selected clip" action="delete" onClick={()=>st.rippleEnabled?st.deleteSelectedRipple():st.deleteSelected()}><IconDelete /></IconButton></div>
   </div>;
 }

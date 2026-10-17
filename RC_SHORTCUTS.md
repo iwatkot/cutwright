@@ -1,5 +1,7 @@
 # Release-candidate shortcut inventory
 
+In 0.0.2, these are default bindings. The keyboard icon opens searchable settings for every editor command and alias, including preview hold-to-pan. Assignments can be added, replaced, removed, or reset, persist per local profile, and appear in button tooltips. Standard focused-control navigation and pointer modifiers retain their normal behavior. The user manual has the complete [configuration procedure](https://cutwright.cc/docs/shortcuts/).
+
 Researched 2026-10-16. This is a bounded comparison with Movavi's documented keyboard shortcuts, not a promise to reproduce its entire product. The table records both the accepted baseline and the current RC source. Fresh UI reports, rather than this inventory alone, establish tested behavior. The RC bindings also appear in accessible in-app shortcut help.
 
 ## Official evidence
@@ -33,4 +35,4 @@ Hold Shift while dragging out or moving a canvas guide to use its axis's configu
 
 Right-click timeline content for a custom context menu. Add marker uses the clicked time, including horizontal scroll. Clip, marker, and transition targets offer their relevant editing actions. Shift+F10 or the Context Menu key opens timeline actions at the playhead when the timeline has focus; arrows, Home/End, Enter, Escape and Tab provide keyboard access.
 
-Over the preview, the mouse wheel zooms around the pointer. Middle-drag or hold Space and left-drag to pan; Fit restores the centered fitted view. Zoom is relative to Fit, from 25% to 800%. Preview navigation is local editor view state and does not change clip transforms, saved project data, export dimensions or editing history. Space elsewhere retains normal playback behavior, and typing fields retain their native text behavior.
+Over the preview, the mouse wheel zooms around the pointer. Right- or middle-drag, enable the hand icon and left-drag, or hold the configured pan key (Space by default) and left-drag to pan. The Fit icon restores the centered fitted view. Zoom is relative to Fit, from 25% to 800%. Preview navigation is local editor view state and does not change clip transforms, saved project data, export dimensions or editing history. Space elsewhere retains normal playback behavior, and typing fields retain their native text behavior.
