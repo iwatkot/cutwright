@@ -176,9 +176,15 @@ export async function restoreBrowserMedia(project: Project): Promise<RestoredBro
   const media = await Promise.all(project.media.map(async (item): Promise<MediaItem> => {
     if (item.overlay) return item;
     let available: boolean | undefined;
+    let audioInfo: Partial<MediaItem> = {};
     if (isBrowserMediaSource(item.src)) {
-      try { available = !!await loadBrowserMedia(item.src); }
-      catch (error) {
+      try {
+        const file = await loadBrowserMedia(item.src);
+        available = !!file;
+        if (file && item.kind === 'video' && item.hasAudio === undefined) {
+          audioInfo = await import('./browserMediaInfo').then(({browserMediaInfo}) => browserMediaInfo(file)).catch(() => ({}));
+        }
+      } catch (error) {
         available = false;
         errors.add(error instanceof Error ? error.message : String(error));
       }
@@ -187,8 +193,8 @@ export async function restoreBrowserMedia(project: Project): Promise<RestoredBro
     }
     if (available === undefined) return item;
     if (!available) missing.push(item.name);
-    if (item.offline === !available) return item;
-    return { ...item, offline: !available };
+    if (item.offline === !available && !Object.keys(audioInfo).length) return item;
+    return { ...item, ...audioInfo, offline: !available };
   }));
   return { project: { ...project, media }, missing, errors: [...errors] };
 }

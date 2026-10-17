@@ -65,9 +65,8 @@ export interface Clip {
   opacity?: number; // 0..1, overlays (default 1)
   volume?: number; // audio gain 0..4 (default 1); Movavi imports use 3.0 for boosted voice, 0.02 for music beds
   speed?: number; // playback rate 0.1..8 (default 1); Movavi imports can exceed 4x
-  /** True when this video clip's embedded audio is carried by a separate
-   * linked audio clip (Movavi linked tracks): preview/export must not also
-   * play this clip's own audio or the voice would be doubled. */
+  /** Embedded video audio is carried by a separate clip. This stays true
+   * after detaching or deleting sound: preview/export never restore or double it. */
   mutedAudio?: boolean;
   /** Linked picture/voice edits share timing and one undo transaction. */
   linkGroup?: string | null; // null explicitly unlinks and survives older-project migration

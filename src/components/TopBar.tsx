@@ -141,12 +141,14 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
       const picked = await window.cutwright.pickMedia();
       if (session !== projectSession.current) return;
       for (const p of picked) {
+        const probe = await window.cutwright.probeMedia(p.path).catch(() => null);
+        if (session !== projectSession.current) return;
         const existing = useStore.getState().project.media.find((m) => m.name.toLowerCase() === p.name.toLowerCase() && (!m.src || m.offline) && !m.overlay);
         const relinked = useStore.getState().relinkMedia(p.name, p.path, 0);
         const itemId = relinked ? existing?.id ?? useStore.getState().project.media.find((m) => m.name === p.name && m.src === p.path)?.id : uid();
         if (!relinked) {
           const kind = /\.(mp3|wav|m4a)$/i.test(p.name) ? 'audio' as const : /\.(png|jpe?g)$/i.test(p.name) ? 'image' as const : 'video' as const;
-          addMedia({ id: itemId!, name: p.name, kind, src: p.path, duration: 10, color: '#60a5fa' });
+          addMedia({ id: itemId!, name: p.name, kind, src: p.path, duration: probe?.ok && probe.duration || 10, color: '#60a5fa', ...(probe?.ok ? {width:probe.width || undefined,height:probe.height || undefined,hasAudio:probe.hasAudio} : {}) });
         } else toast(uiText("Relinked {0} to the project copy", { 0: p.name }));
         // Real metadata: probe duration/dimensions, thumbnail, waveform.
         void (async () => {
@@ -156,7 +158,6 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
             const current = useStore.getState();
             if (session === projectSession.current && current.project.media.some((m) => m.id === item.id && m.src === p.path)) current.updateMedia(item.id, patch);
           };
-          const probe = await window.cutwright.probeMedia(p.path).catch(() => null);
           if (probe?.ok) update({ duration: probe.duration || item.duration, width: probe.width || undefined, height: probe.height || undefined, hasAudio: probe.hasAudio });
           if (item.kind === 'video' || item.kind === 'image') {
             const th = await window.cutwright.mediaThumb(p.path).catch(() => null);
@@ -176,10 +177,11 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
         if (session !== projectSession.current) return;
         const kind = f.type.startsWith('audio') ? 'audio' as const : f.type.startsWith('image') ? 'image' as const : 'video' as const;
         const d = kind === 'image' ? 10 : await probeDuration(stored.url, kind);
+        const info = kind === 'image' ? undefined : await import('../lib/browserMediaInfo').then(({browserMediaInfo}) => browserMediaInfo(f)).catch(() => undefined);
         if (session !== projectSession.current) return;
         // Same filename as missing media relinks its existing timeline edits.
         if (useStore.getState().relinkMedia(f.name, stored.source, d || 0)) toast(uiText("Relinked {0} to the project copy", { 0: f.name }));
-        else addMedia({ id: uid(), name: f.name, kind, src: stored.source, duration: d || 10, color: '#60a5fa' });
+        else addMedia({ id: uid(), name: f.name, kind, src: stored.source, duration: info?.duration || d || 10, color: '#60a5fa', ...(info ? {hasAudio:info.hasAudio,width:info.width,height:info.height} : {}) });
         if (!stored.persisted) toast(uiText("{0} is available in this tab only. Local saving failed: {1}", { 0: f.name, 1: localizedDiagnostic(stored.error) }));
       }, true);
     }

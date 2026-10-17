@@ -14,6 +14,8 @@ import ContextMenu, { type ContextAction } from './ui/ContextMenu';
 import './timeline-rc.css';
 import type { Clip } from '../lib/types';
 import { IconUnlink } from './icons';
+import { IconConnection } from './icons';
+import { canDetachAudio } from '../lib/linkedAudio';
 import { fmtTime } from '../lib/srt';
 import { useShortcutLabel } from '../lib/shortcutPreferences';
 import { BUILTIN_TRANSITIONS } from '../lib/transitions';
@@ -288,7 +290,8 @@ export default function Timeline() {
       }} onKeyDown={e=>{
         if(e.key!=='ContextMenu'&&!(e.shiftKey&&e.key==='F10'))return;
         e.preventDefault();e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();
-        setContext({x:r.left+Math.min(r.width-16,160),y:r.top+30,time:playhead});
+        const clipId=(e.target as Element).closest<HTMLElement>('[data-context-clip]')?.dataset.contextClip;
+        setContext({x:r.left+Math.min(r.width-16,160),y:r.top+30,time:playhead,clipId});
       }}>
         <div className={`tlinner ${rowH < 44 ? 'compact' : ''}`} id="tl-inner" style={{ width: width + labelWidth }}
           onDragOver={(e) => e.preventDefault()}
@@ -357,7 +360,7 @@ export default function Timeline() {
       {label:uiText("Move playhead here"),run:()=>{st.setPlaying(false);st.setPlayhead(at);}},
     ];
     if(context.markerId){const id=context.markerId;actions.push({label:uiText("Edit marker"),run:()=>window.dispatchEvent(new CustomEvent('cw-edit-marker',{detail:id}))},{label:uiText("Delete marker"),icon:<IconDelete/>,danger:true,run:()=>st.removeMarker(id)});}
-    if(context.clipId){const id=context.clipId,c=project.clips.find(c=>c.id===id);actions.push({label:uiText("Split clip here"),icon:<IconSplit/>,disabled:!c||at<=c.start+.1||at>=c.start+c.duration-.1,run:()=>st.splitClipAt(id,at)},{label:uiText("Delete clip"),icon:<IconDelete/>,danger:true,run:()=>{st.selectClip(id);st.deleteSelected();}});}
+    if(context.clipId){const id=context.clipId,c=project.clips.find(c=>c.id===id);actions.push({label:uiText("Split clip here"),icon:<IconSplit/>,disabled:!c||at<=c.start+.1||at>=c.start+c.duration-.1,run:()=>st.splitClipAt(id,at)});if(canDetachAudio(project,id))actions.push({label:uiText("Detach audio"),icon:<IconUnlink/>,run:()=>st.detachAudio(id)});actions.push({label:uiText("Delete clip"),icon:<IconDelete/>,danger:true,run:()=>{st.selectClip(id);st.deleteSelected();}});}
     if(context.transitionId){const id=context.transitionId;actions.push({label:uiText("Remove transition"),icon:<IconDelete/>,danger:true,run:()=>{st.selectTransition(null);st.removeTransition(id);}});}
     return actions;
   }
@@ -376,14 +379,14 @@ export default function Timeline() {
           setTrackMenu(trackMenu?.id === kind ? null : { id: kind, x: b.left, y: Math.max(48, Math.min(window.innerHeight - 155, b.top - 148)), returnFocus });
         }} />
         {clips.map((c) => (
-          <div key={c.id} data-context-clip={c.id} className={`clip ${c.id === selectedClipId ? 'sel' : ''}`}
+          <div key={c.id} data-context-clip={c.id} data-link-group={c.linkGroup || undefined} className={`clip ${c.id === selectedClipId ? 'sel' : c.linkGroup && c.linkGroup === project.clips.find(c=>c.id===selectedClipId)?.linkGroup ? 'linked-peer' : ''}`}
             style={{ left: labelWidth + c.start * pxPerSec, width: Math.max(30, c.duration * pxPerSec), background: c.color }}
-            data-tooltip={uiText("{0} · {1} · {2}s (in {3}s)", { 0: c.name, 1: fmtTime(c.start), 2: c.duration.toFixed(1), 3: c.offset.toFixed(1) })}
-            role="button" tabIndex={0} aria-label={uiText("{0}, {1}, {2} seconds", { 0: c.name, 1: fmtTime(c.start), 2: c.duration.toFixed(1) })} onKeyDown={e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();selectClip(c.id);setPlayhead(c.start);}}} onPointerDown={(e) => startClipDrag(e, c.id, 'move')}>
+            data-tooltip={uiText("{0} · {1} · {2}s (in {3}s)", { 0: c.name, 1: fmtTime(c.start), 2: c.duration.toFixed(1), 3: c.offset.toFixed(1) }) + (c.linkGroup ? uiText(" · Linked audio/video") : '')}
+            role="button" tabIndex={0} aria-label={uiText("{0}, {1}, {2} seconds", { 0: c.name, 1: fmtTime(c.start), 2: c.duration.toFixed(1) }) + (c.linkGroup ? uiText(" · Linked audio/video") : '')} onKeyDown={e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();selectClip(c.id);setPlayhead(c.start);}}} onPointerDown={(e) => startClipDrag(e, c.id, 'move')}>
             <span className="edge l" onPointerDown={(e) => startClipDrag(e, c.id, 'l')} />
-            <span className="clipname">{c.name} · {c.duration.toFixed(1)}{uiText("s")}</span>
+            <span className="clipname">{c.linkGroup && <IconConnection />}{c.name} · {c.duration.toFixed(1)}{uiText("s")}</span>
             {isVideo && thumbnails.get(c.id) && <span className="filmstrip" style={{ backgroundImage: `url(${JSON.stringify(thumbnails.get(c.id))})` }} />}
-            {project.media.find((m) => m.id === c.mediaId)?.peaks?.length ? (
+            {(!isVideo || !c.mutedAudio) && project.media.find((m) => m.id === c.mediaId)?.peaks?.length ? (
               <span className="wave" aria-hidden>
                 {(() => {
                   const m = project.media.find((item) => item.id === c.mediaId)!;
@@ -434,7 +437,8 @@ export function SelectionInspector({ onClose }: { onClose?: () => void } = {}) {
     return <div className="selection-properties"><div className="inspector"><div className="insp-main"><div className="insp-title">{(def ? transitionName(def) : uiText("Transition"))}</div><div className="insp-sub">{uiText("At")}{" "}{fmtTime(tr.at)} · {tr.entrance ? uiText("Entrance") : uiText("Between clips")}</div></div><Field label={uiText("Duration")}><NumberControl label={uiText("Transition duration")} min={.1} max={4} step={.1} value={tr.duration} unit="s" onGestureStart={begin} onChange={v => change(() => st.updateTransition(tr.id,v,false,false))} /></Field><RangeControl label={uiText("Transition duration slider")} min={.1} max={4} step={.1} value={tr.duration} onGestureStart={begin} onChange={v => change(() => st.updateTransition(tr.id,v,false,false))} /><button onClick={() => st.updateTransition(tr.id,tr.duration,true)}>{uiText("Apply to all")}</button><button onClick={() => {st.setPlayhead(Math.max(0,tr.at-tr.duration));st.setPlaying(true);}}><IconPlay />{uiText("Preview")}</button><button onClick={() => {st.selectTransition(null);st.removeTransition(tr.id);}}>{uiText("Remove")}</button><IconButton label={uiText("Close transition properties")} onClick={() => onClose ? onClose() : st.selectTransition(null)}><IconClose /></IconButton></div></div>;
   }
   if (!clip) return <div className="selection-empty"><strong>{uiText("Properties")}</strong><p>{uiText("Select a clip, title or transition to edit it.")}</p></div>;
-  const overlay = resolveOverlay(clip,project.media.find(m=>m.id===clip.mediaId));
+  const media = project.media.find(m=>m.id===clip.mediaId);
+  const overlay = resolveOverlay(clip,media);
   const visual = clip.trackId.startsWith('v');
   const audible = clip.mutedAudio && clip.linkGroup ? project.clips.find(c=>c.linkGroup===clip.linkGroup&&c.trackId.startsWith('a'))??clip:clip;
   const num = (label:string,value:number,property:Partial<Clip>,key:keyof Clip,min=0,max=86400,step=.1,unit?:string) => <Field key={key} label={label}><NumberControl label={label} value={value} min={min} max={max} step={step} unit={unit} onGestureStart={begin} onChange={v=>change(()=>st.updateClip(clip.id,{...property,[key]:v},false))} /></Field>;
@@ -443,9 +447,9 @@ export function SelectionInspector({ onClose }: { onClose?: () => void } = {}) {
     <div className="selection-header"><strong>{clip.name}</strong><small>{uiText("Track")}{" "}{clip.trackId.toUpperCase()}{clip.linkGroup?uiText(" · Linked audio/video"):''}</small><IconButton label={uiText("Close clip properties")} onClick={()=>onClose ? onClose() : st.selectClip(null)}><IconClose /></IconButton></div>
     {overlay&&<OverlayInspector clip={clip} />}
     <InspectorSection title={uiText("Timing")}><div className="property-grid">{num(uiText("Start"),clip.start,{},'start',0,86400,.1,'s')}{num(uiText("Length"),clip.duration,{},'duration',.2,86400,.1,'s')}{num(uiText("Speed"),clip.speed??1,{},'speed',.1,8,.05,'×')}{num(uiText("Source in"),clip.offset,{},'offset',0,86400,.1,'s')}</div></InspectorSection>
-    {!overlay&&<InspectorSection title={uiText("Audio")} defaultOpen={!visual}><div className="property-grid">{num(uiText("Volume"),audible.volume??1,{},'volume',0,4,.05,'×')}{num(uiText("Fade in"),audible.fadeIn??0,{},'fadeIn',0,86400,.1,'s')}{num(uiText("Fade out"),audible.fadeOut??0,{},'fadeOut',0,86400,.1,'s')}</div>{audible.audioEnvelope&&<p className="hint">{uiText("Fades retain their phase across split clips.")}</p>}<button onClick={()=>st.updateClip(clip.id,{volume:1,fadeIn:0,fadeOut:0,audioEnvelope:undefined})}>{uiText("Reset audio")}</button></InspectorSection>}
+    {!overlay && (!visual || media?.kind === 'video' && media.hasAudio !== false && (!clip.mutedAudio || !!clip.linkGroup)) && <InspectorSection title={uiText("Audio")} defaultOpen={!visual}><div className="property-grid">{num(uiText("Volume"),audible.volume??1,{},'volume',0,4,.05,'×')}{num(uiText("Fade in"),audible.fadeIn??0,{},'fadeIn',0,86400,.1,'s')}{num(uiText("Fade out"),audible.fadeOut??0,{},'fadeOut',0,86400,.1,'s')}</div>{audible.audioEnvelope&&<p className="hint">{uiText("Fades retain their phase across split clips.")}</p>}<button onClick={()=>st.updateClip(clip.id,{volume:1,fadeIn:0,fadeOut:0,audioEnvelope:undefined})}>{uiText("Reset audio")}</button></InspectorSection>}
     {visual&&<InspectorSection title={uiText("Transform")} defaultOpen={!overlay}><div className="property-grid">{num(uiText("Scale"),clip.scale??1,{},'scale',.1,3,.05,'×')}{num(uiText("Opacity"),clip.opacity??1,{},'opacity',0,1,.05)}<Field label={uiText("Horizontal offset")}><NumberControl label={uiText("Horizontal offset")} value={(clip.posX??0)*project.width/100} min={-project.width/2} max={project.width/2} unit="px" onGestureStart={begin} onChange={v=>change(()=>st.updateClip(clip.id,{posX:v/project.width*100},false))}/></Field><Field label={uiText("Vertical offset")}><NumberControl label={uiText("Vertical offset")} value={(clip.posY??0)*project.height/100} min={-project.height/2} max={project.height/2} unit="px" onGestureStart={begin} onChange={v=>change(()=>st.updateClip(clip.id,{posY:v/project.height*100},false))}/></Field>{num(uiText("Rotation"),clip.rotate??0,{},'rotate',-180,180,1,'°')}</div><button onClick={()=>st.updateClip(clip.id,{scale:1,opacity:1,posX:0,posY:0,rotate:0})}>{uiText("Reset transform")}</button></InspectorSection>}
     {visual&&<InspectorSection title={uiText("Color")} defaultOpen={false}><div className="property-grid">{num(uiText("Brightness"),clip.brightness??1,{},'brightness',0,2,.05)}{num(uiText("Contrast"),clip.contrast??1,{},'contrast',0,2,.05)}{num(uiText("Saturation"),clip.saturation??1,{},'saturation',0,3,.05)}</div><button onClick={()=>st.updateClip(clip.id,{brightness:1,contrast:1,saturation:1})}>{uiText("Reset color")}</button></InspectorSection>}
-    <div className="selection-actions">{clip.linkGroup&&<IconButton label={uiText("Unlink audio and video")} onClick={()=>st.unlinkClip(clip.id)}><IconUnlink /></IconButton>}<IconButton label={uiText("Split selected clip")} action="split" onClick={split}><IconSplit /></IconButton><IconButton label={uiText("Delete selected clip")} action="delete" onClick={()=>st.rippleEnabled?st.deleteSelectedRipple():st.deleteSelected()}><IconDelete /></IconButton></div>
+    <div className="selection-actions">{canDetachAudio(project,clip.id)&&<IconButton label={uiText("Detach audio")} onClick={()=>st.detachAudio(clip.id)}><IconUnlink /></IconButton>}<IconButton label={uiText("Split selected clip")} action="split" onClick={split}><IconSplit /></IconButton><IconButton label={uiText("Delete selected clip")} action="delete" onClick={()=>st.rippleEnabled?st.deleteSelectedRipple():st.deleteSelected()}><IconDelete /></IconButton></div>
   </div>;
 }

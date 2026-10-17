@@ -5,6 +5,7 @@ import { defaultCanvasSettings, resizeProject } from './canvasGeometry';
 import { validateCanvasSettings } from './validate';
 import { BUILTIN_TRANSITIONS } from './transitions';
 import { deleteLinkedClips, migrateLinkedAudio, patchLinkedClips, splitLinkedClips, unlinkClipGroup } from './clipEdits';
+import { addLinkedAudio, canDetachAudio, detachClipAudio, materializeLinkedAudio } from './linkedAudio';
 import { findTransitionAnchor, isEntrance } from './transitionAnchor';
 
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -97,6 +98,7 @@ interface EditorState {
   trimClip: (id: string, patch: Partial<Pick<Clip, 'start' | 'duration' | 'offset'>>) => void;
   applyTransition: (defId: string, at: number, duration?: number, anchorClipId?: string) => void;
   unlinkClip: (clipId: string) => void;
+  detachAudio: (clipId: string) => void;
   removeTransition: (id: string) => void;
   addCustomTransition: (def: TransitionDef) => void;
   addSubtitle: (start: number, end: number, text: string) => void;
@@ -235,7 +237,7 @@ export const useStore = create<EditorState>((set, get) => ({
     // Opening/creating a project: migrate legacy transition anchors and
     // merge the persisted cross-project transition library (My Creations
     // must survive New/Open and restarts, not live only in one project).
-    let merged = migrateTransitionAnchors(migrateLinkedAudio(p));
+    let merged = migrateTransitionAnchors(materializeLinkedAudio(migrateLinkedAudio(p), uid));
     try {
       const raw = localStorage.getItem('cutwright.customTransitions');
       if (raw) {
@@ -297,7 +299,8 @@ export const useStore = create<EditorState>((set, get) => ({
       color: media.color || CLIP_COLORS[s.project.clips.length % CLIP_COLORS.length],
       ...(media.overlay ? { overlay: structuredClone(media.overlay) } : {}),
     };
-    set({ project: { ...s.project, clips: [...s.project.clips, clip], ...(media.overlay ? { trackOrder: withTopTrack(s.project, trackId) } : {}) }, selectedClipId: clip.id, selectedSubId: null, selectedTransitionId: null });
+    const project = { ...s.project, clips: [...s.project.clips, clip], ...(media.overlay ? { trackOrder: withTopTrack(s.project, trackId) } : {}) };
+    set({ project: addLinkedAudio(project, clip.id, uid), selectedClipId: clip.id, selectedSubId: null, selectedTransitionId: null });
   },
   addOverlay: (name, overlay) => {
     const s = get();
@@ -347,6 +350,12 @@ export const useStore = create<EditorState>((set, get) => ({
   })),
 
   unlinkClip: (clipId) => { get().commit(); set((s) => ({ project: unlinkClipGroup(s.project, clipId) })); },
+  detachAudio: (clipId) => {
+    const s = get();
+    if (!canDetachAudio(s.project, clipId)) return;
+    s.commit();
+    set({project:detachClipAudio(s.project, clipId, uid)});
+  },
   applyTransition: (defId, at, duration, anchorClipId) => {
     const s = get();
     const def = s.allDefs().find((d) => d.id === defId);
