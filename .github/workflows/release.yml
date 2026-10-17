@@ -15,6 +15,7 @@ concurrency:
   cancel-in-progress: false
 env:
   RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+  DOCKER_BUILD_RECORD_UPLOAD: 'false'
 jobs:
   browser:
     name: Build and deploy browser app

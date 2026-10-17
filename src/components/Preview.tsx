@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useStore } from '../lib/store';
 import { useLayoutEffect } from 'react';
 import { fmtTime } from '../lib/srt';
@@ -8,7 +8,8 @@ import { audioEnvelopeGain, resolveAudioEnvelope } from '../lib/audioEnv';
 import { overlaySvg, resolveOverlay } from '../lib/overlay';
 import { resolvePreviewComposition, transitionPreviewStyles, type PreviewLayer } from '../lib/previewComposition';
 import { captionLayout, captionSvg } from '../lib/captions';
-import { IconButton, IconPause, IconPlay, IconSkipEnd, IconSkipStart, IconStepBack, IconStepFwd, IconZoomIn, IconZoomOut } from './icons';
+import { IconButton, IconFit, IconHand, IconPause, IconPlay, IconSkipEnd, IconSkipStart, IconStepBack, IconStepFwd, IconZoomIn, IconZoomOut } from './icons';
+import { useShortcutLabel } from '../lib/shortcutPreferences';
 import type { Clip, MediaItem } from '../lib/types';
 import { toast } from './TopBar';
 import ProjectSettings from './ProjectSettings';
@@ -61,6 +62,7 @@ function routedGain(el: HTMLMediaElement): GainNode | null {
  * the playhead with frame-accurate seeks while paused.
  */
 export default function Preview() {
+  const panShortcut = useShortcutLabel('panHold');
   const project = useStore((s) => s.project);
   const playhead = useStore((s) => s.playhead);
   const playing = useStore((s) => s.playing);
@@ -422,12 +424,13 @@ export default function Preview() {
   return (
     <>
       <ProjectSettings viewControls={<div className="canvas-view-actions" role="group" aria-label="Preview view">
-        <IconButton label="Zoom preview out" title="Zoom preview out · Wheel to zoom" disabled={navigation.view.zoom <= MIN_PREVIEW_ZOOM} onClick={() => navigation.zoom(1 / 1.25)}><IconZoomOut /></IconButton>
-        <output aria-label="Preview zoom" data-tooltip="Zoom relative to Fit · Wheel to zoom · Middle-drag or Space-drag to pan">{Math.round(navigation.view.zoom * 100)}%</output>
-        <IconButton label="Zoom preview in" title="Zoom preview in · Wheel to zoom" disabled={navigation.view.zoom >= MAX_PREVIEW_ZOOM} onClick={() => navigation.zoom(1.25)}><IconZoomIn /></IconButton>
-        <button className="canvas-fit" aria-label="Fit preview" data-tooltip="Fit preview and center view" onClick={navigation.fit}>Fit</button>
+        <IconButton label="Pan preview" action="panToggle" aria-pressed={navigation.handTool} title="Hand tool · Left-drag to pan · Right-drag always pans" onClick={navigation.toggleHand}><IconHand /></IconButton>
+        <IconButton label="Zoom preview out" action="previewZoomOut" title="Zoom preview out · Wheel to zoom" disabled={navigation.view.zoom <= MIN_PREVIEW_ZOOM} onClick={() => navigation.zoom(1 / 1.25)}><IconZoomOut /></IconButton>
+        <output aria-label="Preview zoom" data-tooltip={`Zoom relative to Fit · Wheel to zoom · Right-drag${panShortcut ? ` or hold ${panShortcut} and drag` : ''} to pan`}>{Math.round(navigation.view.zoom * 100)}%</output>
+        <IconButton label="Zoom preview in" action="previewZoomIn" title="Zoom preview in · Wheel to zoom" disabled={navigation.view.zoom >= MAX_PREVIEW_ZOOM} onClick={() => navigation.zoom(1.25)}><IconZoomIn /></IconButton>
+        <IconButton label="Fit preview" action="previewFit" title="Fit preview and center view" onClick={navigation.fit}><IconFit /></IconButton>
       </div>} />
-      <div ref={navigation.viewportRef} className={`previewwrap cw-canvas-workspace${navigation.spaceHeld ? ' cw-preview-hand' : ''}${navigation.panning ? ' cw-preview-panning' : ''}`} role="region" aria-label="Video preview" tabIndex={0} data-preview-zoom={navigation.view.zoom} data-preview-pan-x={navigation.view.x} data-preview-pan-y={navigation.view.y} onPointerDownCapture={navigation.pointerDown} onClickCapture={event => { if (navigation.suppressClick.current) { event.preventDefault(); event.stopPropagation(); } }} onMouseDownCapture={event => { if (event.button === 1) event.preventDefault(); }} onMouseDown={() => { const ae = document.activeElement as HTMLElement | null; if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) ae.blur(); }}>
+      <div ref={navigation.viewportRef} className={`previewwrap cw-canvas-workspace${navigation.spaceHeld || navigation.handTool ? ' cw-preview-hand' : ''}${navigation.panning ? ' cw-preview-panning' : ''}`} role="region" aria-label="Video preview" tabIndex={0} data-preview-zoom={navigation.view.zoom} data-preview-pan-x={navigation.view.x} data-preview-pan-y={navigation.view.y} onPointerDownCapture={navigation.pointerDown} onClickCapture={event => { if (navigation.suppressClick.current) { event.preventDefault(); event.stopPropagation(); } }} onContextMenu={event => event.preventDefault()} onMouseDownCapture={event => { if (event.button === 1 || event.button === 2) event.preventDefault(); }} onMouseDown={() => { const ae = document.activeElement as HTMLElement | null; if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) ae.blur(); }}>
         <div className="canvas-frame" style={{ width: navigation.area.fitWidth * navigation.view.zoom, height: navigation.area.fitHeight * navigation.view.zoom, transform: `translate(${navigation.view.x}px, ${navigation.view.y}px)`, aspectRatio: `${project.width}/${project.height}` }}>
         <div className="stage" ref={stageRef} style={{ isolation: 'isolate', aspectRatio: `${project.width} / ${project.height}` }} onClick={() => { if (previewDef) useStore.getState().setPreviewDef(null); }}>
           {previewDef && (
@@ -477,11 +480,11 @@ export default function Preview() {
       </div>
       <div className="transport">
         <div className="transport-buttons" role="group" aria-label="Playback">
-          <IconButton label="Go to start" shortcut="Home" disabled={playhead <= 0} onClick={() => setPlayhead(0)}><IconSkipStart /></IconButton>
-          <IconButton label="Previous frame" shortcut="←" disabled={playhead <= 0} onClick={() => { setPlaying(false); setPlayhead(Math.max(0, playhead - 1 / project.fps)); }}><IconStepBack /></IconButton>
-          <IconButton label={playing ? 'Pause' : 'Play'} shortcut="Space" className="primary playbtn" aria-pressed={playing} onClick={() => { if (previewDef) useStore.getState().setPreviewDef(null); setPlaying(!playing); }}>{playing ? <IconPause /> : <IconPlay />}</IconButton>
-          <IconButton label="Next frame" shortcut="→" disabled={playhead >= totalDuration} onClick={() => { setPlaying(false); setPlayhead(Math.min(totalDuration, playhead + 1 / project.fps)); }}><IconStepFwd /></IconButton>
-          <IconButton label="Go to end" shortcut="End" disabled={playhead >= totalDuration} onClick={() => setPlayhead(totalDuration)}><IconSkipEnd /></IconButton>
+          <IconButton label="Go to start" action="start" disabled={playhead <= 0} onClick={() => setPlayhead(0)}><IconSkipStart /></IconButton>
+          <IconButton label="Previous frame" action="frameBack" disabled={playhead <= 0} onClick={() => { setPlaying(false); setPlayhead(Math.max(0, playhead - 1 / project.fps)); }}><IconStepBack /></IconButton>
+          <IconButton label={playing ? 'Pause' : 'Play'} action="play" className="primary playbtn" aria-pressed={playing} onClick={() => { if (previewDef) useStore.getState().setPreviewDef(null); setPlaying(!playing); }}>{playing ? <IconPause /> : <IconPlay />}</IconButton>
+          <IconButton label="Next frame" action="frameForward" disabled={playhead >= totalDuration} onClick={() => { setPlaying(false); setPlayhead(Math.min(totalDuration, playhead + 1 / project.fps)); }}><IconStepFwd /></IconButton>
+          <IconButton label="Go to end" action="end" disabled={playhead >= totalDuration} onClick={() => setPlayhead(totalDuration)}><IconSkipEnd /></IconButton>
         </div>
         <div className="timecode">{fmtTime(playhead)} <span>/ {fmtTime(totalDuration)}</span></div>
         <span className="hint current-media" data-tooltip={current?.name}>{current ? current.name : baseClips.length ? 'Gap' : 'No clip'}{def && blending ? ` · ${def.name}` : ''}{overlayClips.length ? ` · +${overlayClips.length} overlay` : ''}</span>

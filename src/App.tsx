@@ -8,7 +8,9 @@ import Timeline, { SelectionInspector } from './components/Timeline';
 import { isEditorShortcut } from './lib/keyboardScope';
 import Tooltips from './components/ui/Tooltips';
 import AgentConnection from './components/AgentConnection';
-import { ShortcutsModal } from './components/Modals';
+import ShortcutSettings from './components/ShortcutSettings';
+import { matchConfiguredShortcut } from './lib/shortcutPreferences';
+import { cycleTheme } from './components/ui/theme';
 import { startAgentConnections } from './lib/agentConnection';
 import { sweepBrowserExportScratch } from './lib/browserExportStorage';
 import { useStore } from './lib/store';
@@ -139,64 +141,59 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.defaultPrevented || e.isComposing || e.keyCode === 229 || document.querySelector('[role="dialog"], .modal, .ui-popover')) return;
-      const target = e.target as HTMLElement;
-      const typing = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable;
-      if (target.closest?.('.modal')) return;
-      const s = useStore.getState();
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); window.dispatchEvent(new Event('cw-save')); return; }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') { e.preventDefault(); window.dispatchEvent(new Event('cw-open')); return; }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') { e.preventDefault(); document.getElementById('export-btn')?.focus(); return; }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === '/') {
-        e.preventDefault();
-        setSettingsOpen(true);
-        return;
-      }
-      if (!isEditorShortcut(e)) return;
-      // Text fields keep native undo/redo: Ctrl+Z inside an input undoes text.
-      // Timeline focus returns after clicking the timeline/preview (they blur
-      // text fields), where Ctrl+Z is timeline history. This respects focus
-      // both ways instead of stealing the key from whichever field has it.
-      if (typing) return;
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) s.redo(); else s.undo(); return; }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); s.redo(); return; }
-      if ((e.ctrlKey || e.metaKey) && ['b', 'k'].includes(e.key.toLowerCase())) { e.preventDefault(); splitWithToast(); return; }
-      if ((e.ctrlKey || e.metaKey) && ['+', '=', '-', '_'].includes(e.key)) { e.preventDefault(); s.setZoom(s.pxPerSec * (e.key === '-' || e.key === '_' ? 1 / 1.25 : 1.25)); return; }
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      const frame = 1 / s.project.fps;
-      switch (e.key) {
-        case ' ':
-          e.preventDefault();
-          s.setPlaying(!s.playing);
-          break;
-        case 'k': case 'K':
-          if (e.ctrlKey || e.metaKey) { e.preventDefault(); splitWithToast(); }
-          else s.setPlaying(!s.playing);
-          break;
-        case 'c': case 'C':
-          if (!(e.ctrlKey || e.metaKey)) splitWithToast();
-          break;
-        case 'j': case 'J': s.setPlayhead(Math.max(0, s.playhead - 2)); break;
-        case 'l': case 'L': s.setPlayhead(Math.min(s.totalDuration(), s.playhead + 2)); break;
-        case 'ArrowLeft': e.preventDefault(); s.setPlayhead(Math.max(0, s.playhead - (e.shiftKey ? 1 : frame))); break;
-        case 'ArrowRight': e.preventDefault(); s.setPlayhead(Math.min(s.totalDuration(), s.playhead + (e.shiftKey ? 1 : frame))); break;
-        case 'ArrowUp': case 'ArrowDown': {
-          e.preventDefault();
-          const times = [...new Set(s.project.clips.flatMap(c => [c.start,c.start+c.duration]))].sort((a,b)=>a-b);
-          const next = e.key === 'ArrowUp' ? times.filter(t=>t<s.playhead-frame/2).at(-1) : times.find(t=>t>s.playhead+frame/2);
+      if (e.defaultPrevented || e.isComposing || e.keyCode === 229 || document.querySelector('[role="dialog"], [role="menu"], [role="listbox"], .modal, .ui-popover')) return;
+      const action = matchConfiguredShortcut(e);
+      if (!action) return;
+      const target = e.target instanceof Element ? e.target : null;
+      const typing = !!target?.closest('input, textarea, select, [contenteditable="true"]');
+      const fieldCommand = typing && (e.ctrlKey || e.metaKey || e.altKey || /^F\d+$/.test(e.code)) && ['saveProject', 'openProject', 'export', 'agent', 'shortcuts'].includes(action);
+      if (!isEditorShortcut(e) && !fieldCommand) return;
+      e.preventDefault();
+      if (e.repeat && ['newProject','openProject','saveProject','importMedia','export','agent','shortcuts','theme','play','split','addMarker','snapping','panToggle'].includes(action)) return;
+      const s = useStore.getState(), frame = 1 / s.project.fps;
+      switch (action) {
+        case 'newProject': window.dispatchEvent(new Event('cw-new')); break;
+        case 'openProject': window.dispatchEvent(new Event('cw-open')); break;
+        case 'saveProject': window.dispatchEvent(new Event('cw-save')); break;
+        case 'importMedia': window.dispatchEvent(new Event('cw-import')); break;
+        case 'export': document.getElementById('export-btn')?.focus(); break;
+        case 'agent': setSettingsOpen(true); break;
+        case 'shortcuts': setShortcutsOpen(true); break;
+        case 'theme': cycleTheme(); break;
+        case 'play': s.setPlaying(!s.playing); break;
+        case 'seekBack': s.setPlayhead(Math.max(0, s.playhead - 2)); break;
+        case 'seekForward': s.setPlayhead(Math.min(s.totalDuration(), s.playhead + 2)); break;
+        case 'frameBack': case 'frameForward': s.setPlayhead(Math.max(0, Math.min(s.totalDuration(), s.playhead + (action === 'frameBack' ? -frame : frame)))); break;
+        case 'secondBack': case 'secondForward': s.setPlayhead(Math.max(0, Math.min(s.totalDuration(), s.playhead + (action === 'secondBack' ? -1 : 1)))); break;
+        case 'boundaryBack': case 'boundaryForward': {
+          const times = [...new Set(s.project.clips.flatMap(c => [c.start, c.start + c.duration]))].sort((a,b) => a-b);
+          const next = action === 'boundaryBack' ? times.filter(t => t < s.playhead - frame / 2).at(-1) : times.find(t => t > s.playhead + frame / 2);
           if (next !== undefined) s.setPlayhead(next);
           break;
         }
-        case 'Delete': case 'Backspace':
+        case 'split': splitWithToast(); break;
+        case 'delete':
           if (s.selectedTransitionId) { const id = s.selectedTransitionId; s.selectTransition(null); s.removeTransition(id); }
-          else if (s.rippleEnabled) s.deleteSelectedRipple();
-          else s.deleteSelected();
+          else if (s.rippleEnabled) s.deleteSelectedRipple(); else s.deleteSelected();
           break;
-        case 'i': case 'I': case 'Home': s.setPlayhead(0); break;
-        case 'o': case 'O': case 'End': s.setPlayhead(s.totalDuration()); break;
-        case '+': case '=': s.setZoom(s.pxPerSec * 1.25); break;
-        case '-': case '_': s.setZoom(s.pxPerSec / 1.25); break;
-        default: break;
+        case 'undo': s.undo(); break;
+        case 'redo': s.redo(); break;
+        case 'start': s.setPlayhead(0); break;
+        case 'end': s.setPlayhead(s.totalDuration()); break;
+        case 'zoomIn': s.setZoom(s.pxPerSec * 1.25); break;
+        case 'zoomOut': s.setZoom(s.pxPerSec / 1.25); break;
+        case 'snapping': s.setSnap(!s.snapEnabled); break;
+        case 'addMarker': { const id = s.addMarker(s.playhead); if (id) window.dispatchEvent(new CustomEvent('cw-edit-marker', { detail: id })); break; }
+        case 'previousMarker': case 'nextMarker': {
+          const markers = (s.project.markers ?? []).slice().sort((a,b) => a.time-b.time);
+          const next = action === 'previousMarker' ? markers.filter(m => m.time < s.playhead - 1e-6).at(-1) : markers.find(m => m.time > s.playhead + 1e-6);
+          if (next) { s.setPlaying(false); s.setPlayhead(next.time); }
+          break;
+        }
+        case 'previewFit': window.dispatchEvent(new Event('cw-preview-fit')); break;
+        case 'previewZoomIn': window.dispatchEvent(new Event('cw-preview-zoom-in')); break;
+        case 'previewZoomOut': window.dispatchEvent(new Event('cw-preview-zoom-out')); break;
+        case 'panToggle': window.dispatchEvent(new Event('cw-preview-pan-toggle')); break;
       }
     };
     window.addEventListener('keydown', onKey);
@@ -205,7 +202,7 @@ export default function App() {
 
   return (
     <div className="app" style={{ '--libw': `${layout.lib}px`, '--tlh': `${layout.tl}px` } as React.CSSProperties}>
-      <TopBar onOpenSettings={() => setSettingsOpen(true)} onOpenShortcuts={() => setShortcutsOpen(true)} />
+      <TopBar onOpenShortcuts={() => setShortcutsOpen(true)} />
       {recovery && (
         <div className="recoverybar">
           <span>Recovered autosave of “{recovery.project.name}” from {new Date(recovery.at).toLocaleTimeString()}.</span>
@@ -225,7 +222,7 @@ export default function App() {
       <Timeline />
       <Tooltips />
       {settingsOpen && <AgentConnection onClose={() => setSettingsOpen(false)} />}
-      {shortcutsOpen && <ShortcutsModal onClose={() => setShortcutsOpen(false)} />}
+      {shortcutsOpen && <ShortcutSettings onClose={() => setShortcutsOpen(false)} />}
     </div>
   );
 }

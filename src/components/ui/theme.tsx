@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { SelectControl } from './Controls';
+import { IconAutoTheme, IconButton, IconMoon, IconSun } from '../icons';
 
 export type ThemePreference = 'auto' | 'light' | 'dark';
 const KEY = 'cutwright.theme';
@@ -10,6 +10,14 @@ function applyTheme(preference: ThemePreference) {
   document.documentElement.dataset.theme = resolved;
   document.documentElement.style.colorScheme = resolved;
   document.querySelector('meta[name="color-scheme"]')?.setAttribute('content', resolved);
+}
+const modes: ThemePreference[] = ['auto', 'light', 'dark'];
+export function cycleTheme() {
+  const next = modes[(modes.indexOf(readTheme()) + 1) % modes.length];
+  sessionTheme = next;
+  try { localStorage.setItem(KEY, next); } catch { /* Apply for this session. */ }
+  applyTheme(next);
+  window.dispatchEvent(new Event('cw-theme'));
 }
 export function useTheme() {
   const [theme, setTheme] = useState<ThemePreference>(readTheme);
@@ -24,6 +32,8 @@ export function useTheme() {
   return [theme, (next: ThemePreference) => { sessionTheme = next; try { localStorage.setItem(KEY, next); } catch { /* still apply for this session */ } setTheme(next); applyTheme(next); window.dispatchEvent(new Event('cw-theme')); }] as const;
 }
 export function ThemeControl() {
-  const [theme, setTheme] = useTheme();
-  return <SelectControl label="Appearance" className="theme-control" value={theme} onChange={v => setTheme(v as ThemePreference)} options={[{ value: 'auto', label: 'Auto', description: 'Follow your device appearance' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]} />;
+  const [theme] = useTheme();
+  const label = theme === 'auto' ? 'automatic' : theme;
+  const next = modes[(modes.indexOf(theme) + 1) % modes.length];
+  return <IconButton label={`Appearance: ${label}. Switch to ${next === 'auto' ? 'automatic' : next}.`} action="theme" className="theme-control" onClick={cycleTheme}>{theme === 'auto' ? <IconAutoTheme /> : theme === 'light' ? <IconSun /> : <IconMoon />}</IconButton>;
 }

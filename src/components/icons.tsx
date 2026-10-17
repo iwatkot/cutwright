@@ -1,7 +1,11 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { useShortcutLabel } from '../lib/shortcutPreferences';
+import type { ShortcutAction } from '../lib/shortcuts';
 
-export function IconButton({ label, shortcut, children, className = '', title, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; shortcut?: string }) {
-  const tooltip = title ?? `${label}${shortcut ? ` (${shortcut})` : ''}`;
+export function IconButton({ label, shortcut, action, children, className = '', title, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { label: string; shortcut?: string; action?: ShortcutAction }) {
+  const configured = useShortcutLabel(action);
+  const hint = action ? configured : shortcut;
+  const tooltip = `${title ?? label}${hint ? ` (${hint})` : ''}`;
   return <button type="button" className={`icon-button ${className}`} aria-label={label} data-tooltip={tooltip} {...props}>{children}</button>;
 }
 
@@ -44,6 +48,12 @@ export const IconPlus = () => base(<><path d="M12 5v14M5 12h14" /></>);
 export const IconClose = () => base(<path d="m6 6 12 12M18 6 6 18" />);
 export const IconUnlink = () => base(<><path d="m9 8 3-3a4 4 0 0 1 6 6l-2 2M15 16l-3 3a4 4 0 0 1-6-6l2-2M3 3l18 18" /></>);
 export const IconHelp = () => base(<><circle cx="12" cy="12" r="9" /><path d="M9.5 9a2.5 2.5 0 1 1 4 2c-1.5 1-1.5 1.5-1.5 2.5M12 17h.01" /></>);
+export const IconKeyboard = () => base(<><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M7 16h10"/></>);
+export const IconFit = () => base(<><path d="M9 3H3v6M15 3h6v6M21 15v6h-6M9 21H3v-6"/><rect x="7" y="7" width="10" height="10" rx="1"/></>);
+export const IconHand = () => base(<><path d="M8 12V5a1.5 1.5 0 0 1 3 0v6-8a1.5 1.5 0 0 1 3 0v8-6a1.5 1.5 0 0 1 3 0v7-4a1.5 1.5 0 0 1 3 0v7c0 4-2 7-6 7h-2c-2 0-3-1-4-3l-4-6a1.8 1.8 0 0 1 3-2l3 4"/></>);
+export const IconSun = () => base(<><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/></>);
+export const IconMoon = () => base(<path d="M20 14a8 8 0 0 1-10-10 8.5 8.5 0 1 0 10 10Z"/>);
+export const IconAutoTheme = () => base(<><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor"/></>);
 export const IconExport = () => base(<><path d="M12 16V4m-4 4 4-4 4 4M5 14v6h14v-6" /></>);
 export const IconVideoPlus = () => base(<><rect x="3" y="5" width="14" height="14" rx="2" /><path d="m17 9 4-2v10l-4-2M7 12h6M10 9v6" /></>);
 export const IconAudioPlus = () => base(<><path d="M5 6v8M2 10h6M14 18V5l7-2v13M14 8l7-2" /><ellipse cx="11" cy="18" rx="3" ry="2" /><ellipse cx="18" cy="16" rx="3" ry="2" /></>);

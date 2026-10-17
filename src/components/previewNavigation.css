@@ -3,7 +3,6 @@
 .canvas-view-actions { display: flex; align-items: center; gap: 1px; flex: none; }
 .canvas-view-actions .icon-button { width: 27px; min-width: 27px; height: 30px; min-height: 30px; padding: 5px; }
 .canvas-view-actions output { min-width: 38px; text-align: center; color: var(--text-2); font-size: 10px; font-variant-numeric: tabular-nums; }
-.canvas-view-actions .canvas-fit { min-height: 29px; padding: 3px 6px; font-size: 10px; }
 .previewwrap.cw-canvas-workspace .canvas-frame { max-width: none; }
 .canvas-viewport-rulers { position: absolute; inset: 30px 16px 16px 36px; z-index: 13; pointer-events: none; }
 .canvas-viewport-rulers .canvas-ruler { pointer-events: auto; overflow: hidden; }
