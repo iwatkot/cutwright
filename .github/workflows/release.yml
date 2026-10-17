@@ -82,6 +82,8 @@ jobs:
           cache: npm
       - name: Build and test
         shell: pwsh
+        env:
+          RELEASE_CHECKS_COMMIT: ${{ github.workflow_sha }}
         run: |
           node scripts/set-release-version.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Release version injection failed.' }
@@ -95,7 +97,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Windows packaging failed.' }
           node scripts/verify-runtime-notices.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Runtime notice check failed.' }
-          node scripts/smoke-windows-release.mjs
+          # Recovery uses the workflow's test harness against the unchanged release build.
+          git fetch --no-tags --depth=1 origin "$env:RELEASE_CHECKS_COMMIT"
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot fetch release verification source.' }
+          node -e 'const fs=require("node:fs"),cp=require("node:child_process");fs.writeFileSync("scripts/.release-smoke-ci.mjs",cp.execFileSync("git",["show",process.env.RELEASE_CHECKS_COMMIT+":scripts/smoke-windows-release.mjs"]))'
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot prepare release verification.' }
+          node scripts/.release-smoke-ci.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Installed Windows E2E failed.' }
       - name: Upload installer and checksums to this release
         shell: pwsh

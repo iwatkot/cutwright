@@ -43,15 +43,23 @@ try {
   const frame = await viewport.boundingBox();
   const x = frame.x + frame.width / 2, y = frame.y + frame.height / 2;
   const originalOffset = await page.getByRole('spinbutton', { name: 'Horizontal offset', exact: true }).inputValue();
+  const expectPan = async (dx, dy) => {
+    // CDP input acknowledgement can precede React's rendered update on the service runner.
+    await page.waitForFunction(({ dx, dy }) => {
+      const view = document.querySelector('[data-preview-pan-x]');
+      return Math.abs(Number(view?.getAttribute('data-preview-pan-x')) - dx) < 0.1 && Math.abs(Number(view?.getAttribute('data-preview-pan-y')) - dy) < 0.1;
+    }, { dx, dy }, { timeout: 5000 });
+    assert(Math.abs(Number(await viewport.getAttribute('data-preview-pan-x')) - dx) < 0.1, 'Preview horizontal pan differs from the drag.');
+    assert(Math.abs(Number(await viewport.getAttribute('data-preview-pan-y')) - dy) < 0.1, 'Preview vertical pan differs from the drag.');
+  };
   await page.mouse.move(x, y); await page.mouse.down({ button: 'right' }); await page.mouse.move(x + 50, y + 30, { steps: 6 }); await page.mouse.up({ button: 'right' });
-  assert.equal(Number(await viewport.getAttribute('data-preview-pan-x')), 50, 'Right-drag did not pan the preview.');
-  assert.equal(Number(await viewport.getAttribute('data-preview-pan-y')), 30);
+  await expectPan(50, 30);
   assert.equal(await page.getByRole('spinbutton', { name: 'Horizontal offset', exact: true }).inputValue(), originalOffset, 'Panning changed the clip transform.');
   await page.getByRole('button', { name: 'Fit preview', exact: true }).click();
   assert.equal(Number(await viewport.getAttribute('data-preview-pan-x')), 0);
   await page.getByRole('button', { name: 'Pan preview', exact: true }).click();
   await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(x + 40, y - 20, { steps: 6 }); await page.mouse.up();
-  assert.equal(Number(await viewport.getAttribute('data-preview-pan-x')), 40, 'Hand-tool left-drag did not pan.');
+  await expectPan(40, -20);
   await page.getByRole('button', { name: 'Fit preview', exact: true }).click();
   await page.getByRole('button', { name: 'Pan preview', exact: true }).click();
   await page.getByRole('button', { name: 'Keyboard shortcuts', exact: true }).click();
