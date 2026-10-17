@@ -1,6 +1,6 @@
 # External agents
 
-CutWright has no embedded conversation or provider composer. Work in your agent's own app and enable access from **Agent connection** (Ctrl+/). Editing and local export do not require an agent, account or API key.
+CutWright has no embedded conversation or provider composer. Work in your agent's own app and enable access from **Agent** at the bottom of the left rail (Ctrl+/ by default, configurable in Keyboard shortcuts). Editing and local export do not require an agent, account or API key.
 
 ## Windows: local MCP
 
@@ -47,11 +47,9 @@ Tool results include `ok` and the current `revision`. Failures include a structu
 npm run typecheck
 npm test
 npm run build
-node scripts/verify-external-agent.mjs
+node scripts/verify-runtime-notices.mjs
 ```
 
-The external-agent verifier uses the official MCP client and a signed-in Codex CLI in its own process. `CW_PACKAGED_EXE` selects an installed executable. It drives actual connection controls, reads/edits the live project, checks exact undo/redo and stale revisions, and exercises local export jobs. It writes its report, protocol calls, agent events and screenshots under ignored `screenshots/external-agent-*/`. A passing unit test or injected `modelContext` stub does not certify an actual agent connection. See [ACCEPTANCE.md](ACCEPTANCE.md) for recorded results and remaining conditions.
+The unit suite checks the command contract, validation, revisions and transport boundaries. The release pipeline's `scripts/smoke-windows-release.mjs` installs the matching Windows package and checks visible versions, controls, import, native export and full video/audio decode. It publishes `smoke-windows.json` with the installer. These checks do not certify a particular external agent client's configuration or browser's WebMCP support.
 
-`node scripts/verify-webmcp.mjs` runs the official Chrome DevTools MCP server 1.11.0 against an isolated Chrome 150+ profile with experimental `--enable-features=WebMCP`. `CW_WEBMCP_CHROME` overrides the executable. It verifies native tool discovery, atomic editing/history/revisions and actual local export/cancellation, with generated fixtures and evidence under `screenshots/webmcp-*/`. This checks an external protocol client; support in ordinary unflagged browsers and a model's natural-language planning are separate concerns.
-
-The Codex verifier authorizes only its requested fixture tools for that invocation. It does not modify persistent client settings. In normal use, the agent client retains its own tool approval controls.
+For an integration check, use a compatible client against an isolated project: discover the advertised tools, read the current revision, apply a small edit, undo/redo it, reject a stale revision, and start and inspect a local export. Disconnect and verify that further access fails. Client approval controls remain in effect. See the [user connection guide](https://cutwright.cc/docs/agents/) for the actual enable/configure/disconnect workflow.
