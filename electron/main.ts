@@ -13,11 +13,17 @@ import { createHash } from 'crypto';
 import { createAgentBridge, resolveAgentEditor, type AgentResponse } from './mcpBridge';
 import { mcpTargetArgument, runMcpStdio } from './mcpStdio';
 import { validateMp4Destination } from './exportDestination';
+import { NATIVE_TRANSLATIONS } from './localeData';
 import { registerMediaProtocol } from './mediaProtocol';
 
 const mcpStdioMode = process.argv.includes('--mcp-stdio');
 if (mcpStdioMode) app.disableHardwareAcceleration();
 let editorWindow: BrowserWindow | null = null;
+let nativeLocale = 'en';
+ipcMain.handle('cutwright:set-locale', (event, locale: unknown) => {
+  if (editorWindow && event.sender === editorWindow.webContents && typeof locale === 'string' && Object.hasOwn(NATIVE_TRANSLATIONS, locale)) nativeLocale = locale;
+});
+const nativeText = (key: string): string => NATIVE_TRANSLATIONS[nativeLocale][key];
 let agentBridge: ReturnType<typeof createAgentBridge> | null = null;
 
 // Local media is served to the renderer through a privileged protocol:
@@ -228,9 +234,9 @@ ipcMain.handle('cutwright:export-video', async (_e, payload: { args: string[]; s
   const envOut = process.env.CUTWRIGHT_EXPORT_TO;
   const requestedOut = payload.outputPath !== undefined ? validateMp4Destination(payload.outputPath) : envOut ? validateMp4Destination(envOut) : null;
   const save = requestedOut ? { canceled: false, filePath: requestedOut } : await dialog.showSaveDialog({
-    title: 'Export MP4',
+    title: nativeText('Export MP4'),
     defaultPath: 'cutwright-export.mp4',
-    filters: [{ name: 'MP4 Video', extensions: ['mp4'] }],
+    filters: [{ name: nativeText('MP4 Video'), extensions: ['mp4'] }],
   });
   if (save.canceled || !save.filePath) return { ok: false, error: 'Export cancelled' };
   const win = editorWindow;
@@ -280,7 +286,7 @@ ipcMain.handle('cutwright:save-project', async (_e, name: string, content: strin
   const safeName = path.basename(name).replace(/[<>:"/\\|?*\x00-\x1f]/g, '_');
   const save = envPath ? { canceled: false, filePath: envPath } : await dialog.showSaveDialog({
     defaultPath: safeName.endsWith('.cutwright.json') ? safeName : `${safeName}.cutwright.json`,
-    filters: [{ name: 'CutWright Project', extensions: ['json'] }],
+    filters: [{ name: nativeText('CutWright Project'), extensions: ['json'] }],
   });
   if (save.canceled || !save.filePath) return { ok: false, canceled: true };
   return writeProjectFile(save.filePath, content);
@@ -289,7 +295,7 @@ ipcMain.handle('cutwright:save-project', async (_e, name: string, content: strin
 ipcMain.handle('cutwright:open-project', async () => {
   const open = process.env.CUTWRIGHT_OPEN_FROM ? { canceled: false, filePaths: [process.env.CUTWRIGHT_OPEN_FROM] } : await dialog.showOpenDialog({
     properties: ['openFile'],
-    filters: [{ name: 'CutWright Project', extensions: ['json'] }],
+    filters: [{ name: nativeText('CutWright Project'), extensions: ['json'] }],
   });
   if (open.canceled || open.filePaths.length === 0) return { ok: false, canceled: true };
   const filePath = open.filePaths[0];
@@ -303,7 +309,7 @@ ipcMain.handle('cutwright:pick-media', async () => {
   const supplied: unknown = process.env.CUTWRIGHT_MEDIA_FILES ? JSON.parse(process.env.CUTWRIGHT_MEDIA_FILES) : null;
   const open = Array.isArray(supplied) && supplied.every((p) => typeof p === 'string') ? { canceled: false, filePaths: supplied as string[] } : await dialog.showOpenDialog({
     properties: ['openFile', 'multiSelections'],
-    filters: [{ name: 'Media', extensions: ['mp4', 'mov', 'mkv', 'webm', 'mp3', 'wav', 'm4a', 'png', 'jpg', 'jpeg'] }],
+    filters: [{ name: nativeText('Media'), extensions: ['mp4', 'mov', 'mkv', 'webm', 'mp3', 'wav', 'm4a', 'png', 'jpg', 'jpeg'] }],
   });
   if (open.canceled) return [];
   return open.filePaths.map((p) => ({ name: path.basename(p), path: pathToFileURL(p).href }));

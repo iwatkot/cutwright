@@ -1,5 +1,6 @@
 import type { NativeOverlay } from './types';
 import { titleBlockHeight, validateOverlay } from './overlay';
+import { t as uiText } from '../i18n/core';
 
 export interface OverlayCanvas { width: number; height: number }
 export interface OverlayAsset extends OverlayCanvas { id: string; name: string; overlay: NativeOverlay }
@@ -30,7 +31,7 @@ export function saveOverlayAsset(name: string, overlay: NativeOverlay, canvas: O
     const assets = loadOverlayAssets();
     if (assetId !== undefined && !assets.some((a) => a.id === assetId)) return false;
     const usedNames = new Set(assets.filter((a) => a.id !== assetId).map((a) => a.name));
-    const baseName = name.trim() || (overlay.kind === 'title' ? 'Title' : 'Arrow');
+    const baseName = name.trim() || (overlay.kind === 'title' ? uiText('Title') : uiText('Arrow'));
     let displayName = baseName;
     for (let i = 2; usedNames.has(displayName); i++) displayName = `${baseName} (${i})`;
     const asset: OverlayAsset = { id: assetId ?? crypto.randomUUID(), name: displayName, overlay: structuredClone(overlay), width: canvas.width, height: canvas.height };

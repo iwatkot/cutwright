@@ -21,23 +21,41 @@ const fixture = path.join(folder, 'release-fixture.mp4'), output = path.join(fol
 const generate = spawnSync(ffmpeg, ['-y', '-f', 'lavfi', '-i', 'testsrc2=size=320x180:rate=24', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000', '-t', '2', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', fixture], { timeout: 30_000, windowsHide: true });
 assert.equal(generate.status, 0, 'Installed Windows FFmpeg could not generate the test media.');
 const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
-const electron = await _electron.launch({ executablePath: executable, args: ['--disable-gpu', `--user-data-dir=${path.join(folder, 'profile')}`], env, timeout: 60_000 });
+const electron = await _electron.launch({ executablePath: executable, args: ['--disable-gpu', '--lang=en-US', `--user-data-dir=${path.join(folder, 'profile')}`], env, timeout: 60_000 });
 try {
   assert.equal(await electron.evaluate(({ app }) => app.getVersion()), version);
   await electron.evaluate(({ dialog }, files) => {
-    dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [files.fixture] });
+    dialog.showOpenDialog = async (...args) => {
+      dialog.showOpenDialog.lastOptions = args.at(-1);
+      return { canceled: false, filePaths: [files.fixture] };
+    };
     dialog.showSaveDialog = async () => ({ canceled: false, filePath: files.output });
   }, { fixture, output });
   const page = await electron.firstWindow();
   await page.locator('.brand-version').waitFor();
   assert.equal(await page.locator('.brand-version').innerText(), version);
+  const chooseLanguage = async (name, code) => {
+    await page.locator('[data-language-toggle]').click();
+    await page.getByRole('menuitemradio', { name, exact: true }).click();
+    await page.waitForFunction(code => document.documentElement.lang === code, code);
+  };
+  await chooseLanguage('English', 'en');
+  const projectName = await page.locator('.projname').inputValue();
+  for (const [name, code] of [['Deutsch', 'de'], ['Українська', 'uk'], ['English', 'en']]) {
+    await chooseLanguage(name, code);
+    assert.equal(await page.locator('.projname').inputValue(), projectName, 'Changing language renamed project content.');
+  }
   assert.equal(await page.getByRole('button', { name: 'Agent', exact: true }).count(), 1);
   assert.equal(await page.locator('.topbar button[aria-label="Agent connection"]').count(), 0);
   await page.getByRole('button', { name: 'Appearance: automatic. Switch to light.', exact: true }).click();
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'light');
   await page.getByRole('button', { name: 'Appearance: light. Switch to dark.', exact: true }).click();
   assert.equal(await page.locator('html').getAttribute('data-theme'), 'dark');
-  await page.getByRole('button', { name: 'Import', exact: true }).click();
+  await chooseLanguage('Deutsch', 'de');
+  await page.getByRole('button', { name: 'Importieren', exact: true }).click();
+  await page.getByText('release-fixture.mp4', { exact: true }).first().waitFor({ timeout: 30_000 });
+  assert.equal(await electron.evaluate(({ dialog }) => dialog.showOpenDialog.lastOptions.filters[0].name), 'Medien', 'Native media picker did not follow the selected language.');
+  await chooseLanguage('English', 'en');
   await page.getByText('release-fixture.mp4', { exact: true }).first().click({ timeout: 30_000 });
   const viewport = page.getByRole('region', { name: 'Video preview', exact: true });
   const frame = await viewport.boundingBox();
@@ -81,6 +99,6 @@ try {
   const decode = spawnSync(ffmpeg, ['-v', 'error', '-i', output, '-f', 'null', '-'], { timeout: 30_000, windowsHide: true });
   assert.equal(decode.status, 0, 'The installed app export could not be decoded.');
   await page.screenshot({ path: 'release/smoke-windows.png' });
-  writeFileSync('release/smoke-windows.json', JSON.stringify({ version, installed: !unpacked, nativeVersion: true, visibleVersion: true, themeToggle: true, configurableShortcuts: true, rightDragPan: true, handToolPan: true, fitReset: true, clipTransformPreserved: true, imported: true, exported: true, decoded: true, outputBytes: statSync(output).size }, null, 2));
-  console.log(`${unpacked ? 'Unpacked' : 'Installed'} Windows ${version}: versions, shortcuts, appearance, panning, import, native export and full decode passed.`);
+  writeFileSync('release/smoke-windows.json', JSON.stringify({ version, installed: !unpacked, nativeVersion: true, visibleVersion: true, localizedControls: true, languagePreservesProjectName: true, localizedNativeMediaPicker: true, themeToggle: true, configurableShortcuts: true, rightDragPan: true, handToolPan: true, fitReset: true, clipTransformPreserved: true, imported: true, exported: true, decoded: true, outputBytes: statSync(output).size }, null, 2));
+  console.log(`${unpacked ? 'Unpacked' : 'Installed'} Windows ${version}: versions, languages, native picker, shortcuts, appearance, panning, import, native export and full decode passed.`);
 } finally { await electron.close(); }

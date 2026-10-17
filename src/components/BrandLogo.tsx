@@ -1,3 +1,5 @@
+import { t as uiText } from '../i18n/core';
+import { websiteHref } from '../i18n/links';
 import { APP_VERSION } from '../version';
 
 /** The selected mark shares one accessible name with its visible wordmark. */
@@ -8,6 +10,6 @@ export default function BrandLogo() {
     <span className="brand-version" aria-hidden="true">{APP_VERSION}</span>
   </>;
   // Desktop keeps its draggable brand until external URLs have a native handler.
-  if (window.cutwright) return <div className="logo brand-logo" role="img" aria-label={`CutWright ${APP_VERSION}`}>{mark}</div>;
-  return <a className="logo brand-logo" href="https://cutwright.cc" target="_blank" rel="noopener noreferrer" aria-label={`CutWright ${APP_VERSION} home`} data-tooltip="CutWright home">{mark}</a>;
+  if (window.cutwright) return <div className="logo brand-logo" role="img" aria-label={uiText("CutWright {0}", { 0: APP_VERSION })}>{mark}</div>;
+  return <a className="logo brand-logo" href={websiteHref()} target="_blank" rel="noopener noreferrer" aria-label={uiText("CutWright {0} home", { 0: APP_VERSION })} data-tooltip={uiText("CutWright home")}>{mark}</a>;
 }

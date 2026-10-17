@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { t as uiText } from '../i18n/core';
 import type { AgentSettings, CanvasSettings, ChatMessage, Clip, MediaItem, NativeOverlay, Project, Subtitle, TimelineMarker, TransitionDef } from './types';
 import { defaultCanvasSettings, resizeProject } from './canvasGeometry';
 import { validateCanvasSettings } from './validate';
@@ -11,7 +12,7 @@ const CLIP_COLORS = ['#2dd4bf', '#f59e0b', '#f472b6', '#60a5fa', '#a3e635', '#fb
 
 export function emptyProject(): Project {
   return {
-    version: 1, name: 'Untitled project', width: 1920, height: 1080, fps: 30,
+    version: 1, name: uiText("Untitled project"), width: 1920, height: 1080, fps: 30,
     media: [], clips: [], transitions: [], subtitles: [], customTransitions: [],
   };
 }
@@ -185,7 +186,7 @@ export const useStore = create<EditorState>((set, get) => ({
     const s = get();
     if (!Number.isFinite(time) || time < 0 || time > 86400 || (s.project.markers?.length ?? 0) >= 1000) return '';
     const id = uid(); s.commit();
-    set({ project: { ...s.project, markers: [...(s.project.markers ?? []), { id, time, label: `Marker ${(s.project.markers?.length ?? 0) + 1}`, color: '#fbbf24' }].sort((a, b) => a.time - b.time) } });
+    set({ project: { ...s.project, markers: [...(s.project.markers ?? []), { id, time, label: uiText("Marker {0}", { 0: (s.project.markers?.length ?? 0) + 1 }), color: '#fbbf24' }].sort((a, b) => a.time - b.time) } });
     return id;
   },
   updateMarker: (id, patch, record = true) => {

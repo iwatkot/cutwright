@@ -1,4 +1,7 @@
+import { t as uiText } from '../i18n/core';
 import { useEffect, useRef, useState } from 'react';
+import LocaleControl from './LocaleControl';
+import { localizedDiagnostic } from '../i18n/presentation';
 import { useStore, emptyProject, uid } from '../lib/store';
 import { exportJobs } from '../lib/exportJobs';
 import { validateProject } from '../lib/validate';
@@ -10,13 +13,14 @@ import { SelectControl } from './ui/Controls';
 import { ThemeControl } from './ui/theme';
 import { exportDimensions } from '../lib/outputDimensions';
 import BrandLogo from './BrandLogo';
+import { projectDownloadBasename } from '../lib/projectFileName';
 
 export function toast(msg: string): void {
   const el = document.createElement('div');
   el.className = 'toast';
   el.setAttribute('role', 'status');
   el.setAttribute('aria-live', 'polite');
-  el.textContent = msg;
+  el.textContent = localizedDiagnostic(msg);
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 4200);
 }
@@ -49,14 +53,15 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
   const exporting = !!job && ['queued', 'running'].includes(job.status);
   const progress = Math.round((job?.progress ?? 0) * 100);
   const exportStage = job?.stage ?? '';
+  const visibleExportStage = localizedDiagnostic(exportStage);
   const [preset, setPreset] = useState<'source' | '1080' | '720' | '480'>('source');
   const inElectron = typeof window !== 'undefined' && !!window.cutwright;
   useEffect(() => {
     const offJobs = exportJobs.subscribe(() => {
       const current = exportJobs.latest(); setJob(current);
       if (!current || current.id === notified.current) return;
-      if (current.status === 'completed') { notified.current = current.id; toast(`Rendered ${inElectron ? '→' : 'locally →'} ${current.outputPath || current.fileName}`); }
-      if (current.status === 'cancelled' || current.status === 'failed') { notified.current = current.id; toast(current.status === 'cancelled' ? 'Export cancelled' : `Export failed: ${current.error}`); }
+      if (current.status === 'completed') { notified.current = current.id; toast(uiText("Rendered {0} {1}", { 0: inElectron ? '→' : uiText("locally →"), 1: current.outputPath || current.fileName })); }
+      if (current.status === 'cancelled' || current.status === 'failed') { notified.current = current.id; toast(current.status === 'cancelled' ? uiText("Export cancelled") : uiText("Export failed: {0}", { 0: localizedDiagnostic(current.error) })); }
     });
     return () => { offJobs(); };
   }, []);
@@ -73,23 +78,23 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
 
   const saveProject = async () => {
     const validation = validateProject(useStore.getState().project);
-    if (!validation.ok) { toast(`Cannot save this project: ${validation.errors[0]}`); return; }
+    if (!validation.ok) { toast(uiText("Cannot save this project: {0}", { 0: localizedDiagnostic(validation.errors[0]) })); return; }
     const session = projectSession.current;
     const saving = project;
     const content = JSON.stringify(project, null, 2);
     try {
       if (window.cutwright) {
         const r = await window.cutwright.saveProjectFile(project.name, content);
-        if (!r.ok) { if ('error' in r && r.error) toast(`Save failed: ${String(r.error)}`); return; }
-        toast(`Project saved${r.path ? ` → ${r.path}` : ''}`);
+        if (!r.ok) { if ('error' in r && r.error) toast(uiText("Save failed: {0}", { 0: localizedDiagnostic(String(r.error)) })); return; }
+        toast(uiText("Project saved{0}", { 0: r.path ? ` → ${r.path}` : '' }));
       } else {
-        download(`${project.name.replace(/[^\w\- ]/g, '')}.cutwright.json`, content, 'application/json');
+        download(`${projectDownloadBasename(project.name)}.cutwright.json`, content, 'application/json');
       }
       if (session !== projectSession.current) return;
       savedRef.current = projectFingerprint(saving);
       setDirty(projectFingerprint(useStore.getState().project) !== savedRef.current);
     } catch (err) {
-      toast(`Save failed: ${err instanceof Error ? err.message : String(err)}`);
+      toast(uiText("Save failed: {0}", { 0: localizedDiagnostic(err) }));
     }
   };
 
@@ -104,8 +109,8 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
     savedRef.current = projectFingerprint(useStore.getState().project);
     setDirty(false);
     window.dispatchEvent(new Event('cw-project-loaded'));
-    toast(`Opened ${name}${restored.missing.length ? ` · ${restored.missing.length} missing file(s). Use Import to relink.` : ''}`);
-    if (restored.errors.length) toast(`Local media could not be restored: ${restored.errors[0]}`);
+    toast(uiText("Opened {0}{1}", { 0: name, 1: restored.missing.length ? uiText(" · {0} missing file(s). Use Import to relink.", { 0: restored.missing.length }) : '' }));
+    if (restored.errors.length) toast(uiText("Local media could not be restored: {0}", { 0: localizedDiagnostic(restored.errors[0]) }));
   };
   const openProject = async () => {
     const session = ++projectSession.current;
@@ -115,16 +120,16 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
         if (r.ok && r.content) {
           const v = validateProject(JSON.parse(r.content));
           if (v.ok && v.project) await loadProject(v.project, r.name ?? 'project', session);
-          else toast(`Invalid project: ${v.errors.join('; ')}`);
-        } else if ('error' in r && r.error) toast(`Open failed: ${String(r.error)}`);
-      } catch (err) { toast(`Open failed: ${err instanceof Error ? err.message : String(err)}`); }
+          else toast(uiText("Invalid project: {0}", { 0: v.errors.map(localizedDiagnostic).join('; ') }));
+        } else if ('error' in r && r.error) toast(uiText("Open failed: {0}", { 0: localizedDiagnostic(String(r.error)) }));
+      } catch (err) { toast(uiText("Open failed: {0}", { 0: localizedDiagnostic(err) })); }
     } else {
       pickFile('.json,application/json', async (f) => {
         try {
           const v = validateProject(JSON.parse(await f.text()));
           if (v.ok && v.project) await loadProject(v.project, f.name, session);
-          else toast(`Invalid project: ${v.errors.join('; ')}`);
-        } catch { toast('That file is not a valid CutWright project.'); }
+          else toast(uiText("Invalid project: {0}", { 0: v.errors.map(localizedDiagnostic).join('; ') }));
+        } catch { toast(uiText("That file is not a valid CutWright project.")); }
       });
     }
   };
@@ -142,7 +147,7 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
         if (!relinked) {
           const kind = /\.(mp3|wav|m4a)$/i.test(p.name) ? 'audio' as const : /\.(png|jpe?g)$/i.test(p.name) ? 'image' as const : 'video' as const;
           addMedia({ id: itemId!, name: p.name, kind, src: p.path, duration: 10, color: '#60a5fa' });
-        } else toast(`Relinked ${p.name} to the project copy`);
+        } else toast(uiText("Relinked {0} to the project copy", { 0: p.name }));
         // Real metadata: probe duration/dimensions, thumbnail, waveform.
         void (async () => {
           const item = useStore.getState().project.media.find((m) => m.id === itemId);
@@ -163,7 +168,7 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
           }
         })();
       }
-      if (picked.length) toast(`Imported ${picked.length} file(s). Click a file to add it to the timeline.`);
+      if (picked.length) toast(uiText("Imported {0} file(s). Click a file to add it to the timeline.", { 0: picked.length }));
     } else {
       pickFile('video/*,audio/*,image/*', async (f) => {
         if (session !== projectSession.current) return;
@@ -173,12 +178,12 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
         const d = kind === 'image' ? 10 : await probeDuration(stored.url, kind);
         if (session !== projectSession.current) return;
         // Same filename as missing media relinks its existing timeline edits.
-        if (useStore.getState().relinkMedia(f.name, stored.source, d || 0)) toast(`Relinked ${f.name} to the project copy`);
+        if (useStore.getState().relinkMedia(f.name, stored.source, d || 0)) toast(uiText("Relinked {0} to the project copy", { 0: f.name }));
         else addMedia({ id: uid(), name: f.name, kind, src: stored.source, duration: d || 10, color: '#60a5fa' });
-        if (!stored.persisted) toast(`${f.name} is available in this tab only. Local saving failed: ${stored.error}`);
+        if (!stored.persisted) toast(uiText("{0} is available in this tab only. Local saving failed: {1}", { 0: f.name, 1: localizedDiagnostic(stored.error) }));
       }, true);
     }
-    } catch (err) { toast(`Import failed: ${err instanceof Error ? err.message : String(err)}`); }
+    } catch (err) { toast(uiText("Import failed: {0}", { 0: localizedDiagnostic(err) })); }
   };
 
   const newProject = () => { projectSession.current++; setProject(emptyProject()); useStore.getState().setPlaying(false); useStore.getState().setPlayhead(0); window.dispatchEvent(new Event('cw-project-loaded')); };
@@ -189,33 +194,34 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
   }, [project]);
   const exportMp4 = async () => {
     try { await exportJobs.start({ preset }); }
-    catch (error) { toast(`Export failed: ${error instanceof Error ? error.message : String(error)}`); }
+    catch (error) { toast(uiText("Export failed: {0}", { 0: localizedDiagnostic(error) })); }
   };
 
   return (
     <div className={`topbar${inElectron ? '' : ' browser-topbar'}`}>
       <BrandLogo />
-      <div className="project-commands" role="group" aria-label="Project commands">
-        <IconButton label="New" action="newProject" onClick={newProject}><IconFilePlus /></IconButton>
-        <IconButton label="Open" action="openProject" onClick={openProject}><IconFolderOpen /></IconButton>
-        <IconButton label="Save" action="saveProject" onClick={saveProject}><IconSave /></IconButton>
+      <div className="project-commands" role="group" aria-label={uiText("Project commands")}>
+        <IconButton label={uiText("New")} action="newProject" onClick={newProject}><IconFilePlus /></IconButton>
+        <IconButton label={uiText("Open")} action="openProject" onClick={openProject}><IconFolderOpen /></IconButton>
+        <IconButton label={uiText("Save")} action="saveProject" onClick={saveProject}><IconSave /></IconButton>
       </div>
       <div className="tbsep" />
       <div className="project-title">
-        <input className="projname" value={project.name} onChange={(e) => setProject({ ...project, name: e.target.value }, true)} aria-label="Project name" data-tooltip={project.name} />
-        <span className={`save-state ${dirty ? 'dirty' : ''}`} role="status" data-tooltip={dirty ? 'Unsaved changes · local recovery enabled' : 'No unsaved changes'}><i />{dirty ? 'Unsaved' : 'Saved'}</span>
+        <input className="projname" value={project.name} onChange={(e) => setProject({ ...project, name: e.target.value }, true)} aria-label={uiText("Project name")} data-tooltip={project.name} />
+        <span className={`save-state ${dirty ? 'dirty' : ''}`} role="status" data-tooltip={dirty ? uiText("Unsaved changes · local recovery enabled") : uiText("No unsaved changes")}><i />{dirty ? uiText("Unsaved") : uiText("Saved")}</span>
       </div>
       <div className="spacer" />
-      <button className="import-button" onClick={importMedia} data-tooltip={`Import video, audio or images${importShortcut ? ` (${importShortcut})` : ''}`}><IconImport /><span>Import</span></button>
-      <SelectControl label="Export preset" className="export-preset" value={preset} onChange={v => setPreset(v as typeof preset)} options={['source','1080','720','480'].map(value=>{ const size=exportDimensions(project,value==='source'?undefined:Number(value)); return {value,label:value==='source'?'Source':`${value}p`,description:`${size.width} × ${size.height}${value==='source'?' · Project size':''}`}; })} />
+      <button className="import-button" onClick={importMedia} data-tooltip={uiText("Import video, audio or images{0}", { 0: importShortcut ? ` (${importShortcut})` : '' })}><IconImport /><span>{uiText("Import")}</span></button>
+      <SelectControl label={uiText("Export preset")} className="export-preset" value={preset} onChange={v => setPreset(v as typeof preset)} options={['source','1080','720','480'].map(value=>{ const size=exportDimensions(project,value==='source'?undefined:Number(value)); return {value,label:value==='source'?uiText("Source"):uiText("{0}p", { 0: value }),description:`${size.width} × ${size.height}${value==='source'?uiText(" · Project size"):''}`}; })} />
       {exporting ? (
-        <button className="primary export-running" id="export-btn" data-tooltip={`${exportStage && exportStage !== 'Rendering composition' ? exportStage : `Rendering ${progress}%`} · click to cancel`} aria-label={`Cancel export · ${progress}%`} onClick={() => { if (job) void exportJobs.cancel(job.id); }}><span>{exportStage && exportStage !== 'Rendering composition' ? exportStage : `Rendering ${progress}%`}</span> · Cancel</button>
+        <button className="primary export-running" id="export-btn" data-tooltip={uiText("{0} · click to cancel", { 0: exportStage && exportStage !== 'Rendering composition' ? visibleExportStage : uiText("Rendering {0}%", { 0: progress }) })} aria-label={uiText("Cancel export · {0}%", { 0: progress })} onClick={() => { if (job) void exportJobs.cancel(job.id); }}><span>{exportStage && exportStage !== 'Rendering composition' ? visibleExportStage : uiText("Rendering {0}%", { 0: progress })}</span>{" "}{uiText("· Cancel")}</button>
       ) : (
-        <button className="primary" id="export-btn" onClick={exportMp4} data-tooltip={`Export video${exportShortcut ? ` (${exportShortcut})` : ''}`}><IconExport />Export</button>
+        <button className="primary" id="export-btn" onClick={exportMp4} data-tooltip={uiText("Export video{0}", { 0: exportShortcut ? ` (${exportShortcut})` : '' })}><IconExport />{uiText("Export")}</button>
       )}
       <div className="tbsep" />
       <ThemeControl />
-      <IconButton label="Keyboard shortcuts" action="shortcuts" onClick={onOpenShortcuts}><IconKeyboard /></IconButton>
+      <LocaleControl />
+      <IconButton label={uiText("Keyboard shortcuts")} action="shortcuts" onClick={onOpenShortcuts}><IconKeyboard /></IconButton>
     </div>
   );
 }
@@ -240,7 +246,7 @@ export function pickFile(accept: string, cb: (f: File) => void | Promise<void>, 
     void (async () => {
       for (const file of files) {
         try { await cb(file); }
-        catch (error) { toast(`Could not read ${file.name}: ${error instanceof Error ? error.message : String(error)}`); }
+        catch (error) { toast(uiText("Could not read {0}: {1}", { 0: file.name, 1: localizedDiagnostic(error) })); }
       }
     })();
   };

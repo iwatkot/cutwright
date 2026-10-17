@@ -3,6 +3,7 @@ import type { AgentRequest, AgentResponse, AgentConnectionStatus } from './mcpBr
 
 contextBridge.exposeInMainWorld('cutwright', {
   platform: process.platform,
+  setLocale: (locale: string) => ipcRenderer.invoke('cutwright:set-locale', locale),
   detectClis: () => ipcRenderer.invoke('cutwright:detect-clis'),
   runAgentCli: (provider: string, prompt: string) => ipcRenderer.invoke('cutwright:run-agent-cli', provider, prompt),
   callLlm: (provider: string, model: string, apiKey: string, prompt: string) =>

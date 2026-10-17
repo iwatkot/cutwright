@@ -1,4 +1,5 @@
 import type { TransitionDef } from './types';
+import { normalizeTransitionDescription } from './transitionLanguage';
 
 /** Built-in transitions. `xfade` values are real FFmpeg xfade names. */
 export const BUILTIN_TRANSITIONS: TransitionDef[] = [
@@ -19,7 +20,7 @@ const XFADES = ['fade', 'fadeblack', 'fadewhite', 'fadegrays', 'slideleft', 'sli
 
 /** Turn a free-text request like "fade to black" into a TransitionDef. */
 export function synthesizeTransition(request: string): TransitionDef {
-  const r = request.toLowerCase();
+  const r = normalizeTransitionDescription(request);
   let preview: TransitionDef['preview'] = 'dissolve';
   let xfade = 'fade';
   let color: string | undefined;
@@ -34,13 +35,14 @@ export function synthesizeTransition(request: string): TransitionDef {
   else if (/blur/.test(r)) { xfade = 'hblur'; preview = 'blur'; }
   else if (/dissolve|cross/.test(r)) { xfade = 'fade'; preview = 'dissolve'; }
 
-  const named = XFADES.find((x) => r.includes(x));
+  const explicit = r.trim().match(/^([a-z]+)(?:\s+\d+(?:\.\d+)?\s*(?:s|sec|seconds|ms))?$/)?.[1];
+  const named = XFADES.find((x) => x === explicit);
   if (named) xfade = named;
 
   const name = request
     .replace(/^(create|make|generate|add|new)\s+(a\s+|an\s+)?(transition\s+)?/i, '')
     .trim()
-    .replace(/\b\w/g, (c) => c.toUpperCase()) || 'Custom Transition';
+    .replace(/^\p{L}/u, (c) => c.toUpperCase()) || 'Custom Transition';
 
   const durMatch = r.match(/(\d+(?:\.\d+)?)\s*(s|sec|seconds|ms)/);
   const duration = durMatch ? (durMatch[2] === 'ms' ? Number(durMatch[1]) / 1000 : Number(durMatch[1])) : 0.7;

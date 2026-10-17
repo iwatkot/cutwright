@@ -32,10 +32,12 @@
 - **Build your edit:** multitrack video and audio, trimming, splitting, speed and picture adjustments.
 - **Finish the frame:** titles, graphic elements, captions, transitions, and project sizing.
 - **Stay precise:** timeline markers, snapping, rulers, guides, a grid, and preview zoom/pan.
-- **Work your way:** configurable shortcuts, light/dark/automatic appearance, project save/open/recovery, and local MP4 export.
+- **Work your way:** configurable shortcuts, light/dark/automatic appearance, 11 interface languages, project save/open/recovery, and local MP4 export.
 - **Bring your agent:** validated project edits, undo/redo, and export through local MCP on Windows or WebMCP in compatible browsers.
 
 Start with the [first-video guide](https://cutwright.cc/docs/getting-started/), or browse the [complete manual](https://cutwright.cc/docs/).
+
+Choose the globe in the editor's top bar or the website footer for **English, Deutsch, Dansk, Hrvatski, Srpski, Čeština, Nederlands, Français, Español, Русский, or Українська**. The entire user guide is available in each language. Your choice is remembered; switching languages preserves project content and undo history. Serbian uses Latin script.
 
 ## How to launch
 
@@ -63,7 +65,7 @@ Docker and Node.js are not needed. Releases also include `SHA256SUMS` and build 
 ### Docker
 
 ```sh
-docker run -d --name cutwright -p 8080:80 iwatkot/cutwright:0.0.2
+docker run -d --name cutwright -p 8080:80 iwatkot/cutwright:0.0.5
 ```
 
 Open **[localhost:8080](http://localhost:8080)**. This image serves the browser editor; your browser still performs editing and export locally.
@@ -82,13 +84,13 @@ Use an exact [release tag](https://github.com/iwatkot/cutwright/releases) when c
 Install **Git** and **Node.js 24 LTS**, which includes npm. These commands check out the matching stable release:
 
 ```sh
-git clone --branch 0.0.2 --depth 1 https://github.com/iwatkot/cutwright.git
+git clone --branch 0.0.5 --depth 1 https://github.com/iwatkot/cutwright.git
 cd cutwright
 npm ci
 npm run dev:web
 ```
 
-Open **[localhost:5173](http://localhost:5173)**, or the local address printed in the terminal. Keep that terminal open; Ctrl+C stops the development server. To work on the newest development code instead, clone the default branch without `--branch 0.0.2`.
+Open **[localhost:5173](http://localhost:5173)**, or the local address printed in the terminal. Keep that terminal open; Ctrl+C stops the development server. To work on the newest development code instead, clone the default branch without `--branch 0.0.5`.
 
 On Windows, start the desktop editor from the same checkout with:
 
@@ -134,11 +136,14 @@ Output: `release/CutWright-Setup-<version>.exe`. Use `npm run dist:dir` for an u
 npm run typecheck
 npm test
 node scripts/audit-rc-widgets.mjs
+npm run check:locales
 ```
 
 After building, `node scripts/verify-runtime-notices.mjs` checks bundled dependency notices. The release pipeline also installs the Windows package and checks import, controls, local export, and full video/audio decode using generated fixtures.
 
 The website hosts the complete user manual. Keep personal media, projects, credentials, internal prompts and build outputs out of commits.
+
+Interface messages are in `src/i18n/messages/`. Keep every supported language complete when adding or changing visible text, accessible labels, help, or errors. `npm run locales:source` refreshes the English source list; locale checks reject missing messages and mismatched placeholders. Language is a viewing preference: preserve user-authored content and stable protocol identifiers.
 
 ### Release
 

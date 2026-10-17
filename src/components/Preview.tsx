@@ -1,3 +1,5 @@
+import { t as uiText } from '../i18n/core';
+import { transitionName } from '../i18n/presentation';
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useStore } from '../lib/store';
 import { useLayoutEffect } from 'react';
@@ -237,7 +239,7 @@ export default function Preview() {
       const master = masterElement && candidates.includes(masterElement) ? masterElement : candidates[0] ?? live[0];
       if (masterElement && masterElement !== master && phase === 'playing') freeze(now, true, 'master change');
       masterElement = master;
-      if (elements.some((el) => el.error)) { fail('Playback could not load local media. Use Import to relink the missing or unsupported file.'); return; }
+      if (elements.some((el) => el.error)) { fail(uiText("Playback could not load local media. Use Import to relink the missing or unsupported file.")); return; }
       if (phase === 'playing') for (const el of elements) {
         if (terminal(el)) continue;
         const correctingSince = corrections.get(el);
@@ -264,7 +266,7 @@ export default function Preview() {
           } catch { corrections.delete(el); }
         }
       }
-      if (phase !== 'playing' && now > deadline) { fail('Playback is waiting for local media. Try Play again, or use Import to relink the file.'); return; }
+      if (phase !== 'playing' && now > deadline) { fail(uiText("Playback is waiting for local media. Try Play again, or use Import to relink the file.")); return; }
       if (phase === 'aligning') {
         let ready = true;
         for (const el of elements) {
@@ -290,7 +292,7 @@ export default function Preview() {
         }
       }
       if (phase === 'starting' && pending === 0) {
-        if (rejection) { fail('Playback was blocked. Press Play again to allow this local media to start.'); return; }
+        if (rejection) { fail(uiText("Playback was blocked. Press Play again to allow this local media to start.")); return; }
         const skew = elements.some((el) => !terminal(el) && Math.abs(el.currentTime - desired(el)) / Number(el.dataset.speed ?? 1) > tolerance);
         if (skew) freeze(now, false);
         else {
@@ -310,7 +312,7 @@ export default function Preview() {
       const mediaTime = master ? Number(master.dataset.start ?? 0) + (master.currentTime - Number(master.dataset.offset ?? 0)) / Number(master.dataset.speed ?? 1) : currentTime + dt;
       const t = Math.max(currentTime, mediaTime);
       if (t > currentTime + 1e-6) progressAt = now;
-      else if (master && now - progressAt > 10000) { fail('Playback has stalled. Try Play again, or use Import to relink the file.'); return; }
+      else if (master && now - progressAt > 10000) { fail(uiText("Playback has stalled. Try Play again, or use Import to relink the file.")); return; }
       if (t >= useStore.getState().totalDuration()) { setPlayhead(useStore.getState().totalDuration()); setPlaying(false); return; }
       expectedPlayhead = t;
       setPlayhead(t);
@@ -423,35 +425,34 @@ export default function Preview() {
 
   return (
     <>
-      <ProjectSettings viewControls={<div className="canvas-view-actions" role="group" aria-label="Preview view">
-        <IconButton label="Pan preview" action="panToggle" aria-pressed={navigation.handTool} title="Hand tool · Left-drag to pan · Right-drag always pans" onClick={navigation.toggleHand}><IconHand /></IconButton>
-        <IconButton label="Zoom preview out" action="previewZoomOut" title="Zoom preview out · Wheel to zoom" disabled={navigation.view.zoom <= MIN_PREVIEW_ZOOM} onClick={() => navigation.zoom(1 / 1.25)}><IconZoomOut /></IconButton>
-        <output aria-label="Preview zoom" data-tooltip={`Zoom relative to Fit · Wheel to zoom · Right-drag${panShortcut ? ` or hold ${panShortcut} and drag` : ''} to pan`}>{Math.round(navigation.view.zoom * 100)}%</output>
-        <IconButton label="Zoom preview in" action="previewZoomIn" title="Zoom preview in · Wheel to zoom" disabled={navigation.view.zoom >= MAX_PREVIEW_ZOOM} onClick={() => navigation.zoom(1.25)}><IconZoomIn /></IconButton>
-        <IconButton label="Fit preview" action="previewFit" title="Fit preview and center view" onClick={navigation.fit}><IconFit /></IconButton>
+      <ProjectSettings viewControls={<div className="canvas-view-actions" role="group" aria-label={uiText("Preview view")}>
+        <IconButton label={uiText("Pan preview")} action="panToggle" aria-pressed={navigation.handTool} title={uiText("Hand tool · Left-drag to pan · Right-drag always pans")} onClick={navigation.toggleHand}><IconHand /></IconButton>
+        <IconButton label={uiText("Zoom preview out")} action="previewZoomOut" title={uiText("Zoom preview out · Wheel to zoom")} disabled={navigation.view.zoom <= MIN_PREVIEW_ZOOM} onClick={() => navigation.zoom(1 / 1.25)}><IconZoomOut /></IconButton>
+        <output aria-label={uiText("Preview zoom")} data-tooltip={uiText("Zoom relative to Fit · Wheel to zoom · Right-drag{0} to pan", { 0: panShortcut ? uiText(" or hold {0} and drag", { 0: panShortcut }) : '' })}>{Math.round(navigation.view.zoom * 100)}%</output>
+        <IconButton label={uiText("Zoom preview in")} action="previewZoomIn" title={uiText("Zoom preview in · Wheel to zoom")} disabled={navigation.view.zoom >= MAX_PREVIEW_ZOOM} onClick={() => navigation.zoom(1.25)}><IconZoomIn /></IconButton>
+        <IconButton label={uiText("Fit preview")} action="previewFit" title={uiText("Fit preview and center view")} onClick={navigation.fit}><IconFit /></IconButton>
       </div>} />
-      <div ref={navigation.viewportRef} className={`previewwrap cw-canvas-workspace${navigation.spaceHeld || navigation.handTool ? ' cw-preview-hand' : ''}${navigation.panning ? ' cw-preview-panning' : ''}`} role="region" aria-label="Video preview" tabIndex={0} data-preview-zoom={navigation.view.zoom} data-preview-pan-x={navigation.view.x} data-preview-pan-y={navigation.view.y} onPointerDownCapture={navigation.pointerDown} onClickCapture={event => { if (navigation.suppressClick.current) { event.preventDefault(); event.stopPropagation(); } }} onContextMenu={event => event.preventDefault()} onMouseDownCapture={event => { if (event.button === 1 || event.button === 2) event.preventDefault(); }} onMouseDown={() => { const ae = document.activeElement as HTMLElement | null; if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) ae.blur(); }}>
+      <div ref={navigation.viewportRef} className={`previewwrap cw-canvas-workspace${navigation.spaceHeld || navigation.handTool ? ' cw-preview-hand' : ''}${navigation.panning ? ' cw-preview-panning' : ''}`} role="region" aria-label={uiText("Video preview")} tabIndex={0} data-preview-zoom={navigation.view.zoom} data-preview-pan-x={navigation.view.x} data-preview-pan-y={navigation.view.y} onPointerDownCapture={navigation.pointerDown} onClickCapture={event => { if (navigation.suppressClick.current) { event.preventDefault(); event.stopPropagation(); } }} onContextMenu={event => event.preventDefault()} onMouseDownCapture={event => { if (event.button === 1 || event.button === 2) event.preventDefault(); }} onMouseDown={() => { const ae = document.activeElement as HTMLElement | null; if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) ae.blur(); }}>
         <div className="canvas-frame" style={{ width: navigation.area.fitWidth * navigation.view.zoom, height: navigation.area.fitHeight * navigation.view.zoom, transform: `translate(${navigation.view.x}px, ${navigation.view.y}px)`, aspectRatio: `${project.width}/${project.height}` }}>
         <div className="stage" ref={stageRef} style={{ isolation: 'isolate', aspectRatio: `${project.width} / ${project.height}` }} onClick={() => { if (previewDef) useStore.getState().setPreviewDef(null); }}>
           {previewDef && (
             <>
               <div className="scene" style={{ background: 'linear-gradient(135deg,#155e75,#0b0c0e 72%)', ...demoStyle(false) }}>
-                <div className="scenename">Clip A</div><div className="scenesub">Transition preview</div>
+                <div className="scenename">{uiText("Clip A")}</div><div className="scenesub">{uiText("Transition preview")}</div>
               </div>
               <div className="scene" style={{ background: 'linear-gradient(135deg,#92400e,#0b0c0e 72%)', ...demoStyle(true) }}>
-                <div className="scenename">Clip B</div><div className="scenesub">{previewDef.name}</div>
+                <div className="scenename">{uiText("Clip B")}</div><div className="scenesub">{transitionName(previewDef)}</div>
               </div>
               {demo?.fill && (
                 <div className="scene" style={{ background: demo.fill.color, opacity: demo.fill.opacity, mixBlendMode: 'plus-lighter', pointerEvents: 'none' }} />
               )}
-              <div className="previewing">Previewing “{previewDef.name}” — drag it onto a cut below, or click the player to go back
-                <button className="ghost" aria-label="Close transition preview" onClick={() => useStore.getState().setPreviewDef(null)}>✕</button>
+              <div className="previewing">{uiText("Previewing “")}{transitionName(previewDef)}{uiText("” — drag it onto a cut below, or click the player to go back")}<button className="ghost" aria-label={uiText("Close transition preview")} onClick={() => useStore.getState().setPreviewDef(null)}>✕</button>
               </div>
             </>
           )}
           {!previewDef && (
             <>
-              {composition.length === 0 && <div className="scene" style={{ background: '#000' }}><div className="scenename">Empty timeline</div><div className="scenesub">Add media from the left panel to start</div></div>}
+              {composition.length === 0 && <div className="scene" style={{ background: '#000' }}><div className="scenename">{uiText("Empty timeline")}</div><div className="scenesub">{uiText("Add media from the left panel to start")}</div></div>}
               {composition.map((track) => <div key={track.id} className="scene" data-cw-track={track.id} data-transition={track.transition?.applied.id}
                 style={{ isolation: 'isolate', overflow: 'hidden', pointerEvents: 'none', ...(track.base ? { background: '#000' } : {}) }}>
                 {track.layers.map((layer) => mediaLayer(layer, track.id + '-'))}
@@ -479,15 +480,15 @@ export default function Preview() {
         <div className="canvas-viewport-rulers"><CanvasRulers stageRef={stageRef} pixelScale={pixelScale} viewRect={{ width: navigation.area.width, height: navigation.area.height, stageWidth: navigation.area.fitWidth * navigation.view.zoom, stageHeight: navigation.area.fitHeight * navigation.view.zoom, x: navigation.view.x, y: navigation.view.y }} /></div>
       </div>
       <div className="transport">
-        <div className="transport-buttons" role="group" aria-label="Playback">
-          <IconButton label="Go to start" action="start" disabled={playhead <= 0} onClick={() => setPlayhead(0)}><IconSkipStart /></IconButton>
-          <IconButton label="Previous frame" action="frameBack" disabled={playhead <= 0} onClick={() => { setPlaying(false); setPlayhead(Math.max(0, playhead - 1 / project.fps)); }}><IconStepBack /></IconButton>
-          <IconButton label={playing ? 'Pause' : 'Play'} action="play" className="primary playbtn" aria-pressed={playing} onClick={() => { if (previewDef) useStore.getState().setPreviewDef(null); setPlaying(!playing); }}>{playing ? <IconPause /> : <IconPlay />}</IconButton>
-          <IconButton label="Next frame" action="frameForward" disabled={playhead >= totalDuration} onClick={() => { setPlaying(false); setPlayhead(Math.min(totalDuration, playhead + 1 / project.fps)); }}><IconStepFwd /></IconButton>
-          <IconButton label="Go to end" action="end" disabled={playhead >= totalDuration} onClick={() => setPlayhead(totalDuration)}><IconSkipEnd /></IconButton>
+        <div className="transport-buttons" role="group" aria-label={uiText("Playback")}>
+          <IconButton label={uiText("Go to start")} action="start" disabled={playhead <= 0} onClick={() => setPlayhead(0)}><IconSkipStart /></IconButton>
+          <IconButton label={uiText("Previous frame")} action="frameBack" disabled={playhead <= 0} onClick={() => { setPlaying(false); setPlayhead(Math.max(0, playhead - 1 / project.fps)); }}><IconStepBack /></IconButton>
+          <IconButton label={playing ? uiText("Pause") : uiText("Play")} action="play" className="primary playbtn" aria-pressed={playing} onClick={() => { if (previewDef) useStore.getState().setPreviewDef(null); setPlaying(!playing); }}>{playing ? <IconPause /> : <IconPlay />}</IconButton>
+          <IconButton label={uiText("Next frame")} action="frameForward" disabled={playhead >= totalDuration} onClick={() => { setPlaying(false); setPlayhead(Math.min(totalDuration, playhead + 1 / project.fps)); }}><IconStepFwd /></IconButton>
+          <IconButton label={uiText("Go to end")} action="end" disabled={playhead >= totalDuration} onClick={() => setPlayhead(totalDuration)}><IconSkipEnd /></IconButton>
         </div>
         <div className="timecode">{fmtTime(playhead)} <span>/ {fmtTime(totalDuration)}</span></div>
-        <span className="hint current-media" data-tooltip={current?.name}>{current ? current.name : baseClips.length ? 'Gap' : 'No clip'}{def && blending ? ` · ${def.name}` : ''}{overlayClips.length ? ` · +${overlayClips.length} overlay` : ''}</span>
+        <span className="hint current-media" data-tooltip={current?.name}>{current ? current.name : baseClips.length ? uiText("Gap") : uiText("No clip")}{def && blending ? ` · ${transitionName(def)}` : ''}{overlayClips.length ? uiText(" · +{0} overlay", { 0: overlayClips.length }) : ''}</span>
         <div className="spacer" />
       </div>
     </>

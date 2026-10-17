@@ -1,3 +1,4 @@
+import { t as uiText } from '../../i18n/core';
 import { useEffect, useState } from 'react';
 import { IconAutoTheme, IconButton, IconMoon, IconSun } from '../icons';
 
@@ -33,7 +34,7 @@ export function useTheme() {
 }
 export function ThemeControl() {
   const [theme] = useTheme();
-  const label = theme === 'auto' ? 'automatic' : theme;
+  const label = theme === 'auto' ? uiText("automatic") : theme === 'light' ? uiText('light') : uiText('dark');
   const next = modes[(modes.indexOf(theme) + 1) % modes.length];
-  return <IconButton label={`Appearance: ${label}. Switch to ${next === 'auto' ? 'automatic' : next}.`} action="theme" className="theme-control" onClick={cycleTheme}>{theme === 'auto' ? <IconAutoTheme /> : theme === 'light' ? <IconSun /> : <IconMoon />}</IconButton>;
+  return <IconButton label={uiText("Appearance: {0}. Switch to {1}.", { 0: label, 1: next === 'auto' ? uiText("automatic") : next === 'light' ? uiText('light') : uiText('dark') })} action="theme" className="theme-control" onClick={cycleTheme}>{theme === 'auto' ? <IconAutoTheme /> : theme === 'light' ? <IconSun /> : <IconMoon />}</IconButton>;
 }

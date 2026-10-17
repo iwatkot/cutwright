@@ -1,6 +1,6 @@
 {
   "name": "cutwright",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "CutWright — fast, clean, fully agentic video editor for Windows",
   "main": "dist-electron/main.js",
   "author": "CutWright",
@@ -16,7 +16,15 @@
     "dist:web": "node scripts/build-browser-distribution.mjs",
     "typecheck": "tsc -b --noEmit && tsc -p tsconfig.electron.json --noEmit && tsc -p tsconfig.connector.json",
     "test": "vitest run",
-    "build:connectors": "node scripts/build-connectors.mjs"
+    "build:connectors": "node scripts/build-connectors.mjs",
+    "predev": "node scripts/build-locales.mjs",
+    "predev:web": "node scripts/build-locales.mjs",
+    "prebuild": "node scripts/check-locales.mjs && node scripts/build-locales.mjs",
+    "prebuild:web": "node scripts/check-locales.mjs && node scripts/build-locales.mjs",
+    "pretest": "node scripts/check-locales.mjs && node scripts/build-locales.mjs",
+    "pretypecheck": "node scripts/check-locales.mjs && node scripts/build-locales.mjs",
+    "check:locales": "node scripts/check-locales.mjs",
+    "locales:source": "node scripts/check-locales.mjs --write-source"
   },
   "dependencies": {
     "@ffmpeg/core": "0.12.10",

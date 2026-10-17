@@ -1,3 +1,5 @@
+import { t as uiText } from '../i18n/core';
+import { transitionName } from '../i18n/presentation';
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { useStore } from '../lib/store';
 import OverlayInspector from './OverlayInspector';
@@ -177,7 +179,7 @@ export default function Timeline() {
 
   const split = () => {
     const err = useStore.getState().splitAtPlayhead();
-    toast(err ?? `Split at ${fmtTime(useStore.getState().playhead)}`);
+    toast(err ?? uiText("Split at {0}", { 0: fmtTime(useStore.getState().playhead) }));
   };
 
   const snapEnabled = useStore((s) => s.snapEnabled);
@@ -234,34 +236,34 @@ export default function Timeline() {
   return (
     <div className="timeline">
       <div className="tltools">
-        <strong>Timeline</strong>
-        <div className="toolgroup" role="group" aria-label="History">
-          <IconButton label="Undo" action="undo" disabled={!canUndo} onClick={() => useStore.getState().undo()}><IconUndo /></IconButton>
-          <IconButton label="Redo" action="redo" disabled={!canRedo} onClick={() => useStore.getState().redo()}><IconRedo /></IconButton>
+        <strong>{uiText("Timeline")}</strong>
+        <div className="toolgroup" role="group" aria-label={uiText("History")}>
+          <IconButton label={uiText("Undo")} action="undo" disabled={!canUndo} onClick={() => useStore.getState().undo()}><IconUndo /></IconButton>
+          <IconButton label={uiText("Redo")} action="redo" disabled={!canRedo} onClick={() => useStore.getState().redo()}><IconRedo /></IconButton>
         </div>
-        <div className="toolgroup" role="group" aria-label="Clip editing">
-          <IconButton label="Split" action="split" disabled={!project.clips.some((c) => playhead > c.start + .1 && playhead < c.start + c.duration - .1)} onClick={split}><IconSplit /></IconButton>
-          <IconButton label="Delete" action="delete" disabled={!selectedClipId && !selectedSubId && !selectedTransitionId} onClick={() => { const s = useStore.getState(); if (s.selectedTransitionId) { const id = s.selectedTransitionId; s.selectTransition(null); s.removeTransition(id); } else if (s.rippleEnabled) s.deleteSelectedRipple(); else s.deleteSelected(); }}><IconDelete /></IconButton>
+        <div className="toolgroup" role="group" aria-label={uiText("Clip editing")}>
+          <IconButton label={uiText("Split")} action="split" disabled={!project.clips.some((c) => playhead > c.start + .1 && playhead < c.start + c.duration - .1)} onClick={split}><IconSplit /></IconButton>
+          <IconButton label={uiText('Delete')} action="delete" disabled={!selectedClipId && !selectedSubId && !selectedTransitionId} onClick={() => { const s = useStore.getState(); if (s.selectedTransitionId) { const id = s.selectedTransitionId; s.selectTransition(null); s.removeTransition(id); } else if (s.rippleEnabled) s.deleteSelectedRipple(); else s.deleteSelected(); }}><IconDelete /></IconButton>
         </div>
-        <div className="toolgroup" role="group" aria-label="Editing behavior">
-          <IconButton label="Snapping" aria-pressed={snapEnabled} onClick={() => useStore.getState().setSnap(!snapEnabled)}><IconSnap /></IconButton>
-          <IconButton label="Ripple editing" aria-pressed={rippleEnabled} onClick={() => useStore.getState().setRipple(!rippleEnabled)}><IconRipple /></IconButton>
+        <div className="toolgroup" role="group" aria-label={uiText("Editing behavior")}>
+          <IconButton label={uiText("Snapping")} aria-pressed={snapEnabled} onClick={() => useStore.getState().setSnap(!snapEnabled)}><IconSnap /></IconButton>
+          <IconButton label={uiText("Ripple editing")} aria-pressed={rippleEnabled} onClick={() => useStore.getState().setRipple(!rippleEnabled)}><IconRipple /></IconButton>
         </div>
-        <div className="toolgroup" role="group" aria-label="Add tracks">
-          <IconButton label="Add video track" onClick={() => useStore.getState().addTrack('video')}><IconVideoPlus /></IconButton>
-          <IconButton label="Add audio track" onClick={() => useStore.getState().addTrack('audio')}><IconAudioPlus /></IconButton>
+        <div className="toolgroup" role="group" aria-label={uiText("Add tracks")}>
+          <IconButton label={uiText("Add video track")} onClick={() => useStore.getState().addTrack('video')}><IconVideoPlus /></IconButton>
+          <IconButton label={uiText("Add audio track")} onClick={() => useStore.getState().addTrack('audio')}><IconAudioPlus /></IconButton>
         </div>
         <TimelineMarkers />
         <div className="spacer" />
-        <span className="timeline-length" data-tooltip="Project duration">{fmtTime(total)}</span>
-        <div className="toolgroup zoomtools" role="group" aria-label="Timeline view">
-          <IconButton label={`Track height: ${rowH}px · change size`} onClick={() => setRowH(rowH < 56 ? 56 : rowH < 72 ? 72 : 40)}><IconTrackHeight /></IconButton>
-          <IconButton label="Zoom out" action="zoomOut" shortcut="−" disabled={pxPerSec <= 4} onClick={() => setZoom(pxPerSec / 1.25)}><IconZoomOut /></IconButton>
-          <RangeControl label="Timeline zoom" min={4} max={80} value={pxPerSec} onChange={setZoom} />
-          <IconButton label="Zoom in" action="zoomIn" shortcut="+" disabled={pxPerSec >= 80} onClick={() => setZoom(pxPerSec * 1.25)}><IconZoomIn /></IconButton>
+        <span className="timeline-length" data-tooltip={uiText("Project duration")}>{fmtTime(total)}</span>
+        <div className="toolgroup zoomtools" role="group" aria-label={uiText("Timeline view")}>
+          <IconButton label={uiText("Track height: {0}px · change size", { 0: rowH })} onClick={() => setRowH(rowH < 56 ? 56 : rowH < 72 ? 72 : 40)}><IconTrackHeight /></IconButton>
+          <IconButton label={uiText("Zoom out")} action="zoomOut" shortcut="−" disabled={pxPerSec <= 4} onClick={() => setZoom(pxPerSec / 1.25)}><IconZoomOut /></IconButton>
+          <RangeControl label={uiText("Timeline zoom")} min={4} max={80} value={pxPerSec} onChange={setZoom} />
+          <IconButton label={uiText("Zoom in")} action="zoomIn" shortcut="+" disabled={pxPerSec >= 80} onClick={() => setZoom(pxPerSec * 1.25)}><IconZoomIn /></IconButton>
         </div>
       </div>
-      <div className="tlscroll" ref={scrollRef} tabIndex={0} aria-label="Timeline tracks" onContextMenu={e=>{
+      <div className="tlscroll" ref={scrollRef} tabIndex={0} aria-label={uiText("Timeline tracks")} onContextMenu={e=>{
         if((e.target as Element).closest('.tracklabel'))return;
         const r=document.getElementById('tl-inner')?.getBoundingClientRect();if(!r)return;
         e.preventDefault();e.stopPropagation();setTrackMenu(null);const target=e.target as Element;
@@ -280,14 +282,14 @@ export default function Timeline() {
             const dropTime = r ? Math.max(0, (e.clientX - r.left - LABEL_W) / pxPerSec) : useStore.getState().playhead;
             const mediaId = e.dataTransfer.getData('cutwright/media');
             const transId = e.dataTransfer.getData('cutwright/transition');
-            if (mediaId) { useStore.getState().addClipFromMedia(mediaId); toast('Added to the end of the timeline'); }
+            if (mediaId) { useStore.getState().addClipFromMedia(mediaId); toast(uiText("Added to the end of the timeline")); }
             if (transId) {
               const row = (e.target as HTMLElement).closest<HTMLElement>('.track[data-track]')?.dataset.track;
               const target = row?.startsWith('v') ? row : 'v1';
               const clips = useStore.getState().project.clips.filter((c) => c.trackId === target);
               const anchor = clips.reduce<Clip | undefined>((best, c) => !best || Math.abs(c.start - dropTime) < Math.abs(best.start - dropTime) ? c : best, undefined);
-              if (anchor) { useStore.getState().applyTransition(transId, anchor.start, undefined, anchor.id); toast(`Transition applied on ${target.toUpperCase()} at ${fmtTime(anchor.start)}`); }
-              else toast('Drop a transition onto a video track containing clips.');
+              if (anchor) { useStore.getState().applyTransition(transId, anchor.start, undefined, anchor.id); toast(uiText("Transition applied on {0} at {1}", { 0: target.toUpperCase(), 1: fmtTime(anchor.start) })); }
+              else toast(uiText("Drop a transition onto a video track containing clips."));
             }
           }}>
           <div className="ruler" style={{ marginLeft: LABEL_W }} onMouseDown={startScrub}>
@@ -296,7 +298,7 @@ export default function Timeline() {
             ))}
           </div>
           <div className="track text" onMouseDown={startScrub}>
-            <div className="tracklabel">TXT</div>
+            <div className="tracklabel">{uiText("TXT")}</div>
             {project.subtitles.map((s) => (
               <div key={s.id} role="button" tabIndex={0} onKeyDown={e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();selectSub(s.id);setPlayhead(s.start);}}} className={`subblock ${s.id === selectedSubId ? 'sel' : ''}`}
                 style={{ left: LABEL_W + s.start * pxPerSec, width: Math.max(26, (s.end - s.start) * pxPerSec) }}
@@ -308,17 +310,17 @@ export default function Timeline() {
           </div>
           {displayTracks.videos.map((id) => renderTrack(id))}
           {displayTracks.audios.map((id) => renderTrack(id))}
-          {(project.markers ?? []).map(m => <button key={m.id} data-context-marker={m.id} className="timeline-marker" style={{ left: LABEL_W + m.time * pxPerSec, '--marker-color': m.color } as React.CSSProperties} aria-label={`Marker ${m.label} at ${fmtTime(m.time)}`} data-tooltip={`${m.label} · ${fmtTime(m.time)} · double-click to edit`} onMouseDown={e => e.stopPropagation()} onClick={() => setPlayhead(m.time)} onDoubleClick={() => window.dispatchEvent(new CustomEvent('cw-edit-marker', {detail:m.id}))}><span>◆</span><i /></button>)}
-          {snapAt !== null && <div className="timeline-snap-indicator" style={{left: LABEL_W + snapAt * pxPerSec}}><span>Snap</span></div>}
+          {(project.markers ?? []).map(m => <button key={m.id} data-context-marker={m.id} className="timeline-marker" style={{ left: LABEL_W + m.time * pxPerSec, '--marker-color': m.color } as React.CSSProperties} aria-label={uiText("Marker {0} at {1}", { 0: m.label, 1: fmtTime(m.time) })} data-tooltip={uiText("{0} · {1} · double-click to edit", { 0: m.label, 1: fmtTime(m.time) })} onMouseDown={e => e.stopPropagation()} onClick={() => setPlayhead(m.time)} onDoubleClick={() => window.dispatchEvent(new CustomEvent('cw-edit-marker', {detail:m.id}))}><span>◆</span><i /></button>)}
+          {snapAt !== null && <div className="timeline-snap-indicator" style={{left: LABEL_W + snapAt * pxPerSec}}><span>{uiText("Snap")}</span></div>}
           <div className="playhead" style={{ left: LABEL_W + playhead * pxPerSec }} />
         </div>
       </div>
-      {context&&<ContextMenu anchor={context} label="Timeline actions" onClose={()=>setContext(null)} actions={contextActions()}/>}
-      {trackMenu && <div className="trackmenu" role="menu" aria-label={`${trackMenu.id.toUpperCase()} track actions`} style={{ left: trackMenu.x, top: trackMenu.y }} onClick={(e) => e.stopPropagation()} onKeyDown={e => { const buttons = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')]; const i=buttons.indexOf(document.activeElement as HTMLButtonElement); if (['ArrowDown','ArrowUp','Home','End','Escape'].includes(e.key)) {e.preventDefault();e.stopPropagation(); if(e.key==='Escape'){setTrackMenu(null);return;}const j=e.key==='Home'?0:e.key==='End'?buttons.length-1:(i+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length;buttons[j]?.focus();} }}>
-        <div className="menu-label">{trackMenu.id.toUpperCase()} track</div>
-        <button role="menuitem" disabled={(trackMenu.id.startsWith('v') ? displayTracks.videos : displayTracks.audios).indexOf(trackMenu.id) === 0} onClick={() => { moveTrack(trackMenu.id, -1); setTrackMenu(null); }}>Move track up</button>
-        <button role="menuitem" disabled={(trackMenu.id.startsWith('v') ? displayTracks.videos : displayTracks.audios).at(-1) === trackMenu.id} onClick={() => { moveTrack(trackMenu.id, 1); setTrackMenu(null); }}>Move track down</button>
-        <button role="menuitem" disabled={trackMenu.id === 'v1' || trackMenu.id === 'a1' || project.clips.some((c) => c.trackId === trackMenu.id)} onClick={() => { useStore.getState().removeTrack(trackMenu.id); setTrackMenu(null); }}>Remove empty track</button>
+      {context&&<ContextMenu anchor={context} label={uiText("Timeline actions")} onClose={()=>setContext(null)} actions={contextActions()}/>}
+      {trackMenu && <div className="trackmenu" role="menu" aria-label={uiText("{0} track actions", { 0: trackMenu.id.toUpperCase() })} style={{ left: trackMenu.x, top: trackMenu.y }} onClick={(e) => e.stopPropagation()} onKeyDown={e => { const buttons = [...e.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')]; const i=buttons.indexOf(document.activeElement as HTMLButtonElement); if (['ArrowDown','ArrowUp','Home','End','Escape'].includes(e.key)) {e.preventDefault();e.stopPropagation(); if(e.key==='Escape'){setTrackMenu(null);return;}const j=e.key==='Home'?0:e.key==='End'?buttons.length-1:(i+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length;buttons[j]?.focus();} }}>
+        <div className="menu-label">{trackMenu.id.toUpperCase()}{" "}{uiText("track")}</div>
+        <button role="menuitem" disabled={(trackMenu.id.startsWith('v') ? displayTracks.videos : displayTracks.audios).indexOf(trackMenu.id) === 0} onClick={() => { moveTrack(trackMenu.id, -1); setTrackMenu(null); }}>{uiText("Move track up")}</button>
+        <button role="menuitem" disabled={(trackMenu.id.startsWith('v') ? displayTracks.videos : displayTracks.audios).at(-1) === trackMenu.id} onClick={() => { moveTrack(trackMenu.id, 1); setTrackMenu(null); }}>{uiText("Move track down")}</button>
+        <button role="menuitem" disabled={trackMenu.id === 'v1' || trackMenu.id === 'a1' || project.clips.some((c) => c.trackId === trackMenu.id)} onClick={() => { useStore.getState().removeTrack(trackMenu.id); setTrackMenu(null); }}>{uiText("Remove empty track")}</button>
       </div>}
     </div>
   );
@@ -327,12 +329,12 @@ export default function Timeline() {
     if(!context)return [];
     const at=context.time, st=useStore.getState();
     const actions:ContextAction[]=[
-      {label:'Add marker',hint:addMarkerShortcut || undefined,icon:<IconPlus/>,disabled:(project.markers?.length??0)>=1000,run:()=>{st.setPlaying(false);st.setPlayhead(at);const id=st.addMarker(at);if(id)window.dispatchEvent(new CustomEvent('cw-edit-marker',{detail:id}));}},
-      {label:'Move playhead here',run:()=>{st.setPlaying(false);st.setPlayhead(at);}},
+      {label:uiText("Add marker"),hint:addMarkerShortcut || undefined,icon:<IconPlus/>,disabled:(project.markers?.length??0)>=1000,run:()=>{st.setPlaying(false);st.setPlayhead(at);const id=st.addMarker(at);if(id)window.dispatchEvent(new CustomEvent('cw-edit-marker',{detail:id}));}},
+      {label:uiText("Move playhead here"),run:()=>{st.setPlaying(false);st.setPlayhead(at);}},
     ];
-    if(context.markerId){const id=context.markerId;actions.push({label:'Edit marker',run:()=>window.dispatchEvent(new CustomEvent('cw-edit-marker',{detail:id}))},{label:'Delete marker',icon:<IconDelete/>,danger:true,run:()=>st.removeMarker(id)});}
-    if(context.clipId){const id=context.clipId,c=project.clips.find(c=>c.id===id);actions.push({label:'Split clip here',icon:<IconSplit/>,disabled:!c||at<=c.start+.1||at>=c.start+c.duration-.1,run:()=>st.splitClipAt(id,at)},{label:'Delete clip',icon:<IconDelete/>,danger:true,run:()=>{st.selectClip(id);st.deleteSelected();}});}
-    if(context.transitionId){const id=context.transitionId;actions.push({label:'Remove transition',icon:<IconDelete/>,danger:true,run:()=>{st.selectTransition(null);st.removeTransition(id);}});}
+    if(context.markerId){const id=context.markerId;actions.push({label:uiText("Edit marker"),run:()=>window.dispatchEvent(new CustomEvent('cw-edit-marker',{detail:id}))},{label:uiText("Delete marker"),icon:<IconDelete/>,danger:true,run:()=>st.removeMarker(id)});}
+    if(context.clipId){const id=context.clipId,c=project.clips.find(c=>c.id===id);actions.push({label:uiText("Split clip here"),icon:<IconSplit/>,disabled:!c||at<=c.start+.1||at>=c.start+c.duration-.1,run:()=>st.splitClipAt(id,at)},{label:uiText("Delete clip"),icon:<IconDelete/>,danger:true,run:()=>{st.selectClip(id);st.deleteSelected();}});}
+    if(context.transitionId){const id=context.transitionId;actions.push({label:uiText("Remove transition"),icon:<IconDelete/>,danger:true,run:()=>{st.selectTransition(null);st.removeTransition(id);}});}
     return actions;
   }
 
@@ -349,18 +351,18 @@ export default function Timeline() {
         <div className={`tracklabel ${empty ? 'slim' : ''}`}>
           <span className="trackname">{label}</span>
           <span className="trackbtns">
-            {isVideo && <IconButton className="trackbtn" label={`${settings.hidden ? 'Show' : 'Hide'} ${label}`} aria-pressed={!settings.hidden} onMouseDown={(e) => e.stopPropagation()} onClick={() => useStore.getState().setTrackSettings(kind, { hidden: !settings.hidden })}>{settings.hidden ? <IconEyeOff /> : <IconEye />}</IconButton>}
-            <IconButton className={`trackbtn ${settings.muted ? 'off' : ''}`} label={`${settings.muted ? 'Unmute' : 'Mute'} ${label}`} aria-pressed={!!settings.muted} onMouseDown={(e) => e.stopPropagation()} onClick={() => useStore.getState().setTrackSettings(kind, { muted: !settings.muted })}>{settings.muted ? <IconMuted /> : <IconVolume />}</IconButton>
-            <IconButton className="trackbtn" label={`${label} track actions`} aria-haspopup="menu" aria-expanded={trackMenu?.id === kind} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); const b = e.currentTarget.getBoundingClientRect(); setTrackMenu(trackMenu?.id === kind ? null : { id: kind, x: b.left, y: Math.max(48, Math.min(window.innerHeight - 155, b.top - 148)) }); }}><IconDots /></IconButton>
+            {isVideo && <IconButton className="trackbtn" label={`${settings.hidden ? uiText("Show") : uiText("Hide")} ${label}`} aria-pressed={!settings.hidden} onMouseDown={(e) => e.stopPropagation()} onClick={() => useStore.getState().setTrackSettings(kind, { hidden: !settings.hidden })}>{settings.hidden ? <IconEyeOff /> : <IconEye />}</IconButton>}
+            <IconButton className={`trackbtn ${settings.muted ? 'off' : ''}`} label={`${settings.muted ? uiText("Unmute") : uiText("Mute")} ${label}`} aria-pressed={!!settings.muted} onMouseDown={(e) => e.stopPropagation()} onClick={() => useStore.getState().setTrackSettings(kind, { muted: !settings.muted })}>{settings.muted ? <IconMuted /> : <IconVolume />}</IconButton>
+            <IconButton className="trackbtn" label={uiText("{0} track actions", { 0: label })} aria-haspopup="menu" aria-expanded={trackMenu?.id === kind} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); const b = e.currentTarget.getBoundingClientRect(); setTrackMenu(trackMenu?.id === kind ? null : { id: kind, x: b.left, y: Math.max(48, Math.min(window.innerHeight - 155, b.top - 148)) }); }}><IconDots /></IconButton>
           </span>
         </div>
         {clips.map((c) => (
           <div key={c.id} data-context-clip={c.id} className={`clip ${c.id === selectedClipId ? 'sel' : ''}`}
             style={{ left: LABEL_W + c.start * pxPerSec, width: Math.max(30, c.duration * pxPerSec), background: c.color }}
-            data-tooltip={`${c.name} · ${fmtTime(c.start)} · ${c.duration.toFixed(1)}s (in ${c.offset.toFixed(1)}s)`}
-            role="button" tabIndex={0} aria-label={`${c.name}, ${fmtTime(c.start)}, ${c.duration.toFixed(1)} seconds`} onKeyDown={e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();selectClip(c.id);setPlayhead(c.start);}}} onMouseDown={(e) => startClipDrag(e, c.id, 'move')}>
+            data-tooltip={uiText("{0} · {1} · {2}s (in {3}s)", { 0: c.name, 1: fmtTime(c.start), 2: c.duration.toFixed(1), 3: c.offset.toFixed(1) })}
+            role="button" tabIndex={0} aria-label={uiText("{0}, {1}, {2} seconds", { 0: c.name, 1: fmtTime(c.start), 2: c.duration.toFixed(1) })} onKeyDown={e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();selectClip(c.id);setPlayhead(c.start);}}} onMouseDown={(e) => startClipDrag(e, c.id, 'move')}>
             <span className="edge l" onMouseDown={(e) => startClipDrag(e, c.id, 'l')} />
-            <span className="clipname">{c.name} · {c.duration.toFixed(1)}s</span>
+            <span className="clipname">{c.name} · {c.duration.toFixed(1)}{uiText("s")}</span>
             {isVideo && thumbnails.get(c.id) && <span className="filmstrip" style={{ backgroundImage: `url(${JSON.stringify(thumbnails.get(c.id))})` }} />}
             {project.media.find((m) => m.id === c.mediaId)?.peaks?.length ? (
               <span className="wave" aria-hidden>
@@ -384,13 +386,13 @@ export default function Timeline() {
           return (
             <div key={tr.id} data-context-transition={tr.id} role="button" tabIndex={0} onKeyDown={e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();useStore.getState().selectTransition(tr.id);}}} className={`tltrans ${tr.id === selectedTransitionId ? 'sel' : ''}`}
               style={{ left: LABEL_W + tr.at * pxPerSec - (tr.entrance ? 0 : w / 2), width: w }}
-              data-tooltip={`${def?.name ?? 'Transition'} · ${tr.duration.toFixed(1)}s — right-click for actions`}
+              data-tooltip={uiText("{0} · {1}s — right-click for actions", { 0: (def ? transitionName(def) : uiText("Transition")), 1: tr.duration.toFixed(1) })}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={() => useStore.getState().selectTransition(tr.id)}
               onDoubleClick={() => useStore.getState().selectTransition(tr.id)}
               >
               <span className="tltrans-icon">◆</span>
-              <span className="tltrans-name">{def?.name ?? 'Transition'}</span>
+              <span className="tltrans-name">{def ? transitionName(def) : uiText("Transition")}</span>
             </div>
           );
         })}
@@ -410,21 +412,21 @@ export function SelectionInspector() {
   const tr = project.transitions.find(t => t.id === transitionId);
   if (tr) {
     const def = st.allDefs().find(d => d.id === tr.defId);
-    return <div className="selection-properties"><div className="inspector"><div className="insp-main"><div className="insp-title">{def?.name ?? 'Transition'}</div><div className="insp-sub">At {fmtTime(tr.at)} · {tr.entrance ? 'Entrance' : 'Between clips'}</div></div><Field label="Duration"><NumberControl label="Transition duration" min={.1} max={4} step={.1} value={tr.duration} unit="s" onGestureStart={begin} onChange={v => change(() => st.updateTransition(tr.id,v,false,false))} /></Field><RangeControl label="Transition duration slider" min={.1} max={4} step={.1} value={tr.duration} onGestureStart={begin} onChange={v => change(() => st.updateTransition(tr.id,v,false,false))} /><button onClick={() => st.updateTransition(tr.id,tr.duration,true)}>Apply to all</button><button onClick={() => {st.setPlayhead(Math.max(0,tr.at-tr.duration));st.setPlaying(true);}}><IconPlay />Preview</button><button onClick={() => {st.selectTransition(null);st.removeTransition(tr.id);}}>Remove</button><IconButton label="Close transition properties" onClick={() => st.selectTransition(null)}><IconClose /></IconButton></div></div>;
+    return <div className="selection-properties"><div className="inspector"><div className="insp-main"><div className="insp-title">{(def ? transitionName(def) : uiText("Transition"))}</div><div className="insp-sub">{uiText("At")}{" "}{fmtTime(tr.at)} · {tr.entrance ? uiText("Entrance") : uiText("Between clips")}</div></div><Field label={uiText("Duration")}><NumberControl label={uiText("Transition duration")} min={.1} max={4} step={.1} value={tr.duration} unit="s" onGestureStart={begin} onChange={v => change(() => st.updateTransition(tr.id,v,false,false))} /></Field><RangeControl label={uiText("Transition duration slider")} min={.1} max={4} step={.1} value={tr.duration} onGestureStart={begin} onChange={v => change(() => st.updateTransition(tr.id,v,false,false))} /><button onClick={() => st.updateTransition(tr.id,tr.duration,true)}>{uiText("Apply to all")}</button><button onClick={() => {st.setPlayhead(Math.max(0,tr.at-tr.duration));st.setPlaying(true);}}><IconPlay />{uiText("Preview")}</button><button onClick={() => {st.selectTransition(null);st.removeTransition(tr.id);}}>{uiText("Remove")}</button><IconButton label={uiText("Close transition properties")} onClick={() => st.selectTransition(null)}><IconClose /></IconButton></div></div>;
   }
-  if (!clip) return <div className="selection-empty"><strong>Properties</strong><p>Select a clip, title or transition to edit it.</p></div>;
+  if (!clip) return <div className="selection-empty"><strong>{uiText("Properties")}</strong><p>{uiText("Select a clip, title or transition to edit it.")}</p></div>;
   const overlay = resolveOverlay(clip,project.media.find(m=>m.id===clip.mediaId));
   const visual = clip.trackId.startsWith('v');
   const audible = clip.mutedAudio && clip.linkGroup ? project.clips.find(c=>c.linkGroup===clip.linkGroup&&c.trackId.startsWith('a'))??clip:clip;
-  const num = (label:string,value:number,property:Partial<Clip>,key:keyof Clip,min=0,max=86400,step=.1,unit?:string) => <Field key={label} label={label}><NumberControl label={label} value={value} min={min} max={max} step={step} unit={unit} onGestureStart={begin} onChange={v=>change(()=>st.updateClip(clip.id,{...property,[key]:v},false))} /></Field>;
+  const num = (label:string,value:number,property:Partial<Clip>,key:keyof Clip,min=0,max=86400,step=.1,unit?:string) => <Field key={key} label={label}><NumberControl label={label} value={value} min={min} max={max} step={step} unit={unit} onGestureStart={begin} onChange={v=>change(()=>st.updateClip(clip.id,{...property,[key]:v},false))} /></Field>;
   const split = () => {const error=st.splitAtPlayhead();if(error)toast(error);};
   return <div className="selection-properties" key={clip.id}>
-    <div className="selection-header"><strong>{clip.name}</strong><small>Track {clip.trackId.toUpperCase()}{clip.linkGroup?' · Linked audio/video':''}</small><IconButton label="Close clip properties" onClick={()=>st.selectClip(null)}><IconClose /></IconButton></div>
+    <div className="selection-header"><strong>{clip.name}</strong><small>{uiText("Track")}{" "}{clip.trackId.toUpperCase()}{clip.linkGroup?uiText(" · Linked audio/video"):''}</small><IconButton label={uiText("Close clip properties")} onClick={()=>st.selectClip(null)}><IconClose /></IconButton></div>
     {overlay&&<OverlayInspector clip={clip} />}
-    <InspectorSection title="Timing"><div className="property-grid">{num('Start',clip.start,{},'start',0,86400,.1,'s')}{num('Length',clip.duration,{},'duration',.2,86400,.1,'s')}{num('Speed',clip.speed??1,{},'speed',.1,8,.05,'×')}{num('Source in',clip.offset,{},'offset',0,86400,.1,'s')}</div></InspectorSection>
-    {!overlay&&<InspectorSection title="Audio" defaultOpen={!visual}><div className="property-grid">{num('Volume',audible.volume??1,{},'volume',0,4,.05,'×')}{num('Fade in',audible.fadeIn??0,{},'fadeIn',0,86400,.1,'s')}{num('Fade out',audible.fadeOut??0,{},'fadeOut',0,86400,.1,'s')}</div>{audible.audioEnvelope&&<p className="hint">Fades retain their phase across split clips.</p>}<button onClick={()=>st.updateClip(clip.id,{volume:1,fadeIn:0,fadeOut:0,audioEnvelope:undefined})}>Reset audio</button></InspectorSection>}
-    {visual&&<InspectorSection title="Transform" defaultOpen={!overlay}><div className="property-grid">{num('Scale',clip.scale??1,{},'scale',.1,3,.05,'×')}{num('Opacity',clip.opacity??1,{},'opacity',0,1,.05)}<Field label="Horizontal offset"><NumberControl label="Horizontal offset" value={(clip.posX??0)*project.width/100} min={-project.width/2} max={project.width/2} unit="px" onGestureStart={begin} onChange={v=>change(()=>st.updateClip(clip.id,{posX:v/project.width*100},false))}/></Field><Field label="Vertical offset"><NumberControl label="Vertical offset" value={(clip.posY??0)*project.height/100} min={-project.height/2} max={project.height/2} unit="px" onGestureStart={begin} onChange={v=>change(()=>st.updateClip(clip.id,{posY:v/project.height*100},false))}/></Field>{num('Rotation',clip.rotate??0,{},'rotate',-180,180,1,'°')}</div><button onClick={()=>st.updateClip(clip.id,{scale:1,opacity:1,posX:0,posY:0,rotate:0})}>Reset transform</button></InspectorSection>}
-    {visual&&<InspectorSection title="Color" defaultOpen={false}><div className="property-grid">{num('Brightness',clip.brightness??1,{},'brightness',0,2,.05)}{num('Contrast',clip.contrast??1,{},'contrast',0,2,.05)}{num('Saturation',clip.saturation??1,{},'saturation',0,3,.05)}</div><button onClick={()=>st.updateClip(clip.id,{brightness:1,contrast:1,saturation:1})}>Reset color</button></InspectorSection>}
-    <div className="selection-actions">{clip.linkGroup&&<IconButton label="Unlink audio and video" onClick={()=>st.unlinkClip(clip.id)}><IconUnlink /></IconButton>}<IconButton label="Split selected clip" action="split" onClick={split}><IconSplit /></IconButton><IconButton label="Delete selected clip" action="delete" onClick={()=>st.rippleEnabled?st.deleteSelectedRipple():st.deleteSelected()}><IconDelete /></IconButton></div>
+    <InspectorSection title={uiText("Timing")}><div className="property-grid">{num(uiText("Start"),clip.start,{},'start',0,86400,.1,'s')}{num(uiText("Length"),clip.duration,{},'duration',.2,86400,.1,'s')}{num(uiText("Speed"),clip.speed??1,{},'speed',.1,8,.05,'×')}{num(uiText("Source in"),clip.offset,{},'offset',0,86400,.1,'s')}</div></InspectorSection>
+    {!overlay&&<InspectorSection title={uiText("Audio")} defaultOpen={!visual}><div className="property-grid">{num(uiText("Volume"),audible.volume??1,{},'volume',0,4,.05,'×')}{num(uiText("Fade in"),audible.fadeIn??0,{},'fadeIn',0,86400,.1,'s')}{num(uiText("Fade out"),audible.fadeOut??0,{},'fadeOut',0,86400,.1,'s')}</div>{audible.audioEnvelope&&<p className="hint">{uiText("Fades retain their phase across split clips.")}</p>}<button onClick={()=>st.updateClip(clip.id,{volume:1,fadeIn:0,fadeOut:0,audioEnvelope:undefined})}>{uiText("Reset audio")}</button></InspectorSection>}
+    {visual&&<InspectorSection title={uiText("Transform")} defaultOpen={!overlay}><div className="property-grid">{num(uiText("Scale"),clip.scale??1,{},'scale',.1,3,.05,'×')}{num(uiText("Opacity"),clip.opacity??1,{},'opacity',0,1,.05)}<Field label={uiText("Horizontal offset")}><NumberControl label={uiText("Horizontal offset")} value={(clip.posX??0)*project.width/100} min={-project.width/2} max={project.width/2} unit="px" onGestureStart={begin} onChange={v=>change(()=>st.updateClip(clip.id,{posX:v/project.width*100},false))}/></Field><Field label={uiText("Vertical offset")}><NumberControl label={uiText("Vertical offset")} value={(clip.posY??0)*project.height/100} min={-project.height/2} max={project.height/2} unit="px" onGestureStart={begin} onChange={v=>change(()=>st.updateClip(clip.id,{posY:v/project.height*100},false))}/></Field>{num(uiText("Rotation"),clip.rotate??0,{},'rotate',-180,180,1,'°')}</div><button onClick={()=>st.updateClip(clip.id,{scale:1,opacity:1,posX:0,posY:0,rotate:0})}>{uiText("Reset transform")}</button></InspectorSection>}
+    {visual&&<InspectorSection title={uiText("Color")} defaultOpen={false}><div className="property-grid">{num(uiText("Brightness"),clip.brightness??1,{},'brightness',0,2,.05)}{num(uiText("Contrast"),clip.contrast??1,{},'contrast',0,2,.05)}{num(uiText("Saturation"),clip.saturation??1,{},'saturation',0,3,.05)}</div><button onClick={()=>st.updateClip(clip.id,{brightness:1,contrast:1,saturation:1})}>{uiText("Reset color")}</button></InspectorSection>}
+    <div className="selection-actions">{clip.linkGroup&&<IconButton label={uiText("Unlink audio and video")} onClick={()=>st.unlinkClip(clip.id)}><IconUnlink /></IconButton>}<IconButton label={uiText("Split selected clip")} action="split" onClick={split}><IconSplit /></IconButton><IconButton label={uiText("Delete selected clip")} action="delete" onClick={()=>st.rippleEnabled?st.deleteSelectedRipple():st.deleteSelected()}><IconDelete /></IconButton></div>
   </div>;
 }

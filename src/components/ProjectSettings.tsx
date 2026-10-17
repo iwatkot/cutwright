@@ -1,3 +1,4 @@
+import { t as uiText } from '../i18n/core';
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useStore } from '../lib/store';
@@ -44,7 +45,7 @@ export default function ProjectSettings({ viewControls }: { viewControls?: React
   }, [open]);
   useEffect(() => {
     if (!open) return;
-    popup.current?.querySelector<HTMLButtonElement>('[aria-label="Close project settings"]')?.focus();
+    popup.current?.querySelector<HTMLButtonElement>('[data-project-close]')?.focus();
     const outside = (event: PointerEvent) => {
       const target = event.target;
       if (target instanceof Element && target.closest('[role="tooltip"]')) return;
@@ -59,17 +60,17 @@ export default function ProjectSettings({ viewControls }: { viewControls?: React
     document.addEventListener('pointerdown', outside, true); document.addEventListener('keydown', escape, true);
     return () => { document.removeEventListener('pointerdown', outside, true); document.removeEventListener('keydown', escape, true); };
   }, [open]);
-  const format = project.width === project.height ? '1:1' : project.width * 9 === project.height * 16 ? '16:9' : project.width * 16 === project.height * 9 ? '9:16' : 'Custom';
+  const format = project.width === project.height ? '1:1' : project.width * 9 === project.height * 16 ? '16:9' : project.width * 16 === project.height * 9 ? '9:16' : uiText("Custom");
   const validSize = Number.isInteger(width) && Number.isInteger(height) && width % 2 === 0 && height % 2 === 0;
   return <>
-    <div className="canvas-toolbar" role="toolbar" aria-label="Canvas tools">
-      <button ref={anchor} className="canvas-format" aria-label="Project settings" aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? id : undefined} data-tooltip="Project and canvas settings" onClick={() => { setWidth(project.width); setHeight(project.height); setOpen(!open); }}><IconSettings /><span>{format} · {project.width} × {project.height}</span></button>
+    <div className="canvas-toolbar" role="toolbar" aria-label={uiText("Canvas tools")}>
+      <button ref={anchor} className="canvas-format" aria-label={uiText("Project settings")} aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? id : undefined} data-tooltip={uiText("Project and canvas settings")} onClick={() => { setWidth(project.width); setHeight(project.height); setOpen(!open); }}><IconSettings /><span>{format} · {project.width} × {project.height}</span></button>
       <div className="spacer" />
-      <div className="canvas-aid-actions" role="group" aria-label="Canvas aids">
-        <IconButton label="Rulers" title="Pixel rulers" aria-pressed={config.rulers} onClick={() => apply({ rulers: !config.rulers })}><IconRuler /></IconButton>
-        <IconButton label="Guides" title="Canvas guides" aria-pressed={config.guidesVisible} onClick={() => apply({ guidesVisible: !config.guidesVisible })}><IconGuides /></IconButton>
-        <IconButton label="Grid" title="Canvas grid" aria-pressed={config.grid.visible} onClick={() => apply({ grid: { ...config.grid, visible: !config.grid.visible } })}><IconGrid /></IconButton>
-        <IconButton label="Snap" title="Snap objects to guides and frame" aria-pressed={config.snap} onClick={() => apply({ snap: !config.snap })}><IconSnap /></IconButton>
+      <div className="canvas-aid-actions" role="group" aria-label={uiText("Canvas aids")}>
+        <IconButton label={uiText("Rulers")} title={uiText("Pixel rulers")} aria-pressed={config.rulers} onClick={() => apply({ rulers: !config.rulers })}><IconRuler /></IconButton>
+        <IconButton label={uiText("Guides")} title={uiText("Canvas guides")} aria-pressed={config.guidesVisible} onClick={() => apply({ guidesVisible: !config.guidesVisible })}><IconGuides /></IconButton>
+        <IconButton label={uiText("Grid")} title={uiText("Canvas grid")} aria-pressed={config.grid.visible} onClick={() => apply({ grid: { ...config.grid, visible: !config.grid.visible } })}><IconGrid /></IconButton>
+        <IconButton label={uiText("Snap")} title={uiText("Snap objects to guides and frame")} aria-pressed={config.snap} onClick={() => apply({ snap: !config.snap })}><IconSnap /></IconButton>
       </div>
       {viewControls}
     </div>
@@ -80,28 +81,28 @@ export default function ProjectSettings({ viewControls }: { viewControls?: React
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     }}>
-      <div className="canvas-settings-heading"><strong id={`${id}-title`}>Project & canvas</strong><IconButton label="Close project settings" onClick={() => close(true)}><IconClose /></IconButton></div>
+      <div className="canvas-settings-heading"><strong id={`${id}-title`}>{uiText("Project & canvas")}</strong><IconButton data-project-close label={uiText("Close project settings")} onClick={() => close(true)}><IconClose /></IconButton></div>
       <div className="canvas-settings-body">
-        <section className="canvas-settings-section" aria-label="Frame size">
-          <div className="canvas-settings-section-heading"><h3>Frame</h3><button className="canvas-size-apply" disabled={!validSize || width === project.width && height === project.height} onClick={() => useStore.getState().setProjectSize(width,height)}>Apply size</button></div>
-          <ToggleGroup label="Project aspect ratio" value={format} options={[{value:'16:9',label:'Landscape 16:9',icon:<span>16:9</span>},{value:'9:16',label:'Portrait 9:16',icon:<span>9:16</span>},{value:'1:1',label:'Square 1:1',icon:<span>1:1</span>}]} onChange={(v) => { const [w,h] = v === '16:9' ? [1920,1080] : v === '9:16' ? [1080,1920] : [1080,1080]; useStore.getState().setProjectSize(w,h); setWidth(w); setHeight(h); }} />
-          <div className="canvas-fields"><Field label="Width"><NumberControl label="Project width" value={width} onChange={setWidth} min={2} max={16384} step={2} unit="px" /></Field><Field label="Height"><NumberControl label="Project height" value={height} onChange={setHeight} min={2} max={16384} step={2} unit="px" /></Field></div>
-          <p className="canvas-settings-hint" role={validSize ? undefined : 'status'}>{validSize ? 'Text and guides keep their relative position.' : 'Width and height must be even pixel values.'}</p>
+        <section className="canvas-settings-section" aria-label={uiText("Frame size")}>
+          <div className="canvas-settings-section-heading"><h3>{uiText("Frame")}</h3><button className="canvas-size-apply" disabled={!validSize || width === project.width && height === project.height} onClick={() => useStore.getState().setProjectSize(width,height)}>{uiText("Apply size")}</button></div>
+          <ToggleGroup label={uiText("Project aspect ratio")} value={format} options={[{value:'16:9',label:uiText("Landscape 16:9"),icon:<span>16:9</span>},{value:'9:16',label:uiText("Portrait 9:16"),icon:<span>9:16</span>},{value:'1:1',label:uiText("Square 1:1"),icon:<span>1:1</span>}]} onChange={(v) => { const [w,h] = v === '16:9' ? [1920,1080] : v === '9:16' ? [1080,1920] : [1080,1080]; useStore.getState().setProjectSize(w,h); setWidth(w); setHeight(h); }} />
+          <div className="canvas-fields"><Field label={uiText("Width")}><NumberControl label={uiText("Project width")} value={width} onChange={setWidth} min={2} max={16384} step={2} unit="px" /></Field><Field label={uiText("Height")}><NumberControl label={uiText("Project height")} value={height} onChange={setHeight} min={2} max={16384} step={2} unit="px" /></Field></div>
+          <p className="canvas-settings-hint" role={validSize ? undefined : 'status'}>{validSize ? uiText("Text and guides keep their relative position.") : uiText("Width and height must be even pixel values.")}</p>
         </section>
-        <section className="canvas-settings-section" aria-label="Grid settings">
-          <h3>Grid</h3>
-          <div className="canvas-fields"><Field label="Horizontal spacing"><NumberControl label="Grid horizontal spacing" value={config.grid.spacingX} min={1} max={16384} unit="px" onGestureStart={begin} onChange={(v) => apply({grid:{...config.grid,spacingX:v}},true)} /></Field><Field label="Vertical spacing"><NumberControl label="Grid vertical spacing" value={config.grid.spacingY} min={1} max={16384} unit="px" onGestureStart={begin} onChange={(v) => apply({grid:{...config.grid,spacingY:v}},true)} /></Field><Field label="Origin X"><NumberControl label="Grid origin X" value={config.grid.originX} min={-16384} max={16384} unit="px" onGestureStart={begin} onChange={(v) => apply({grid:{...config.grid,originX:v}},true)} /></Field><Field label="Origin Y"><NumberControl label="Grid origin Y" value={config.grid.originY} min={-16384} max={16384} unit="px" onGestureStart={begin} onChange={(v) => apply({grid:{...config.grid,originY:v}},true)} /></Field></div>
+        <section className="canvas-settings-section" aria-label={uiText("Grid settings")}>
+          <h3>{uiText("Grid")}</h3>
+          <div className="canvas-fields"><Field label={uiText("Horizontal spacing")}><NumberControl label={uiText("Grid horizontal spacing")} value={config.grid.spacingX} min={1} max={16384} unit="px" onGestureStart={begin} onChange={(v) => apply({grid:{...config.grid,spacingX:v}},true)} /></Field><Field label={uiText("Vertical spacing")}><NumberControl label={uiText("Grid vertical spacing")} value={config.grid.spacingY} min={1} max={16384} unit="px" onGestureStart={begin} onChange={(v) => apply({grid:{...config.grid,spacingY:v}},true)} /></Field><Field label={uiText("Origin X")}><NumberControl label={uiText("Grid origin X")} value={config.grid.originX} min={-16384} max={16384} unit="px" onGestureStart={begin} onChange={(v) => apply({grid:{...config.grid,originX:v}},true)} /></Field><Field label={uiText("Origin Y")}><NumberControl label={uiText("Grid origin Y")} value={config.grid.originY} min={-16384} max={16384} unit="px" onGestureStart={begin} onChange={(v) => apply({grid:{...config.grid,originY:v}},true)} /></Field></div>
         </section>
-        <section className="canvas-settings-section canvas-guide-settings" aria-label="Guide and snapping actions">
-          <h3>Guides & snapping</h3>
-          <div className="canvas-guide-actions" role="group" aria-label="Guide and snapping actions">
-            <IconButton label="Snap to grid" aria-pressed={config.grid.snap} onClick={() => apply({grid:{...config.grid,snap:!config.grid.snap}})}><IconGridSnap /></IconButton>
-            <IconButton label="Lock guides" aria-pressed={config.guidesLocked} onClick={() => apply({guidesLocked:!config.guidesLocked})}><IconLock /></IconButton>
+        <section className="canvas-settings-section canvas-guide-settings" aria-label={uiText("Guide and snapping actions")}>
+          <h3>{uiText("Guides & snapping")}</h3>
+          <div className="canvas-guide-actions" role="group" aria-label={uiText("Guide and snapping actions")}>
+            <IconButton label={uiText("Snap to grid")} aria-pressed={config.grid.snap} onClick={() => apply({grid:{...config.grid,snap:!config.grid.snap}})}><IconGridSnap /></IconButton>
+            <IconButton label={uiText("Lock guides")} aria-pressed={config.guidesLocked} onClick={() => apply({guidesLocked:!config.guidesLocked})}><IconLock /></IconButton>
             <span className="canvas-action-divider" />
-            <IconButton label="Add vertical guide" onClick={() => apply({guides:[...config.guides,{id:crypto.randomUUID(),axis:'x',position:project.width/2}]})} disabled={config.guides.length >= 200}><IconGuideVerticalPlus /></IconButton>
-            <IconButton label="Add horizontal guide" onClick={() => apply({guides:[...config.guides,{id:crypto.randomUUID(),axis:'y',position:project.height/2}]})} disabled={config.guides.length >= 200}><IconGuideHorizontalPlus /></IconButton>
+            <IconButton label={uiText("Add vertical guide")} onClick={() => apply({guides:[...config.guides,{id:crypto.randomUUID(),axis:'x',position:project.width/2}]})} disabled={config.guides.length >= 200}><IconGuideVerticalPlus /></IconButton>
+            <IconButton label={uiText("Add horizontal guide")} onClick={() => apply({guides:[...config.guides,{id:crypto.randomUUID(),axis:'y',position:project.height/2}]})} disabled={config.guides.length >= 200}><IconGuideHorizontalPlus /></IconButton>
           </div>
-          <p className="canvas-settings-hint">Canvas aids stay out of exports.</p>
+          <p className="canvas-settings-hint">{uiText("Canvas aids stay out of exports.")}</p>
         </section>
       </div>
     </div>,document.body)}

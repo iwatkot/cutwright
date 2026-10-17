@@ -1,4 +1,7 @@
+import { localizedDiagnostic } from './i18n/presentation';
+import { t as uiText } from './i18n/core';
 import { useEffect, useRef, useState } from 'react';
+import { useLocale } from './i18n/react';
 import { validateProject } from './lib/validate';
 import type { Project } from './lib/types';
 import TopBar, { toast } from './components/TopBar';
@@ -18,6 +21,8 @@ import { fmtTime } from './lib/srt';
 import { readBrowserRecovery, restoreBrowserMedia, writeBrowserRecovery, type BrowserRecovery } from './lib/browserMedia';
 
 export default function App() {
+  const locale = useLocale();
+  useEffect(() => { void window.cutwright?.setLocale?.(locale).catch(error => console.warn('Native language preference could not be applied:', error)); }, [locale]);
   useEffect(startAgentConnections, []);
   useEffect(() => {
     if (!window.cutwright) void sweepBrowserExportScratch().catch((error) => console.warn('Temporary export cleanup could not complete:', error));
@@ -71,10 +76,10 @@ export default function App() {
           const r = await window.cutwright.initialProject();
           if (r?.ok && r.content) {
             const v = validateProject(JSON.parse(r.content));
-            if (v.ok && v.project) { useStore.getState().setProject(v.project, true); window.dispatchEvent(new Event('cw-project-loaded')); toast(`Loaded ${r.name}`); return; }
-            toast(`Project failed validation: ${v.errors.join('; ')}`);
+            if (v.ok && v.project) { useStore.getState().setProject(v.project, true); window.dispatchEvent(new Event('cw-project-loaded')); toast(uiText("Loaded {0}", { 0: r.name })); return; }
+            toast(uiText("Project failed validation: {0}", { 0: v.errors.map(localizedDiagnostic).join('; ') }));
           }
-        } catch (err) { toast(`Could not load project: ${err instanceof Error ? err.message : String(err)}`); }
+        } catch (err) { toast(uiText("Could not load project: {0}", { 0: localizedDiagnostic(err) })); }
       }
       let parsed: BrowserRecovery | null = null;
       try { parsed = recoveryCandidate(JSON.parse(localStorage.getItem('cutwright.autosave') ?? 'null')); }
@@ -83,7 +88,7 @@ export default function App() {
         try {
           const local = recoveryCandidate(await readBrowserRecovery());
           if (local && (!parsed || local.at >= parsed.at)) parsed = local;
-        } catch (error) { toast(`Local recovery could not be read: ${error instanceof Error ? error.message : String(error)}`); }
+        } catch (error) { toast(uiText("Local recovery could not be read: {0}", { 0: localizedDiagnostic(error) })); }
       }
       const current = useStore.getState().project;
       if (parsed && JSON.stringify(parsed.project) !== JSON.stringify(current)) setRecovery(parsed);
@@ -96,17 +101,17 @@ export default function App() {
     setRestoring(true);
     try {
       const restored = window.cutwright ? { project: recovery.project, missing: [], errors: [] } : await restoreBrowserMedia(recovery.project);
-      if (useStore.getState().project !== current) { toast('The project changed while recovery was loading. Restore again when ready.'); return; }
+      if (useStore.getState().project !== current) { toast(uiText("The project changed while recovery was loading. Restore again when ready.")); return; }
       window.dispatchEvent(new Event('cw-project-will-load'));
       const store = useStore.getState();
       store.setPlaying(false);
       store.setPlayhead(0);
       store.setProject(restored.project, true);
       setRecovery(null);
-      toast(`Restored ${restored.project.name}${restored.missing.length ? ` · ${restored.missing.length} missing file(s). Use Import to relink.` : ''}`);
-      if (restored.errors.length) toast(`Local media could not be restored: ${restored.errors[0]}`);
+      toast(uiText("Restored {0}{1}", { 0: restored.project.name, 1: restored.missing.length ? uiText(" · {0} missing file(s). Use Import to relink.", { 0: restored.missing.length }) : '' }));
+      if (restored.errors.length) toast(uiText("Local media could not be restored: {0}", { 0: localizedDiagnostic(restored.errors[0]) }));
     } catch (error) {
-      toast(`Recovery failed: ${error instanceof Error ? error.message : String(error)}`);
+      toast(uiText("Recovery failed: {0}", { 0: localizedDiagnostic(error) }));
     } finally { setRestoring(false); }
   };
 
@@ -131,7 +136,7 @@ export default function App() {
           }
           saveErrorShown = false;
         }).catch((error) => {
-          if (active && !saveErrorShown) toast(`Recovery could not be saved. Save your project file: ${error instanceof Error ? error.message : String(error)}`);
+          if (active && !saveErrorShown) toast(uiText("Recovery could not be saved. Save your project file: {0}", { 0: localizedDiagnostic(error) }));
           saveErrorShown = true;
         });
       }, 700);
@@ -205,20 +210,20 @@ export default function App() {
       <TopBar onOpenShortcuts={() => setShortcutsOpen(true)} />
       {recovery && (
         <div className="recoverybar">
-          <span>Recovered autosave of “{recovery.project.name}” from {new Date(recovery.at).toLocaleTimeString()}.</span>
-          <button className="primary" disabled={restoring} onClick={() => void restoreRecovery()}>{restoring ? 'Restoring…' : 'Restore'}</button>
-          <button disabled={restoring} onClick={() => setRecovery(null)}>Dismiss</button>
+          <span>{uiText("Recovered autosave of “")}{recovery.project.name}{uiText("” from")}{" "}{new Date(recovery.at).toLocaleTimeString(locale)}.</span>
+          <button className="primary" disabled={restoring} onClick={() => void restoreRecovery()}>{restoring ? uiText("Restoring…") : uiText("Restore")}</button>
+          <button disabled={restoring} onClick={() => setRecovery(null)}>{uiText("Dismiss")}</button>
         </div>
       )}
       <div className="main">
         <Library onOpenSettings={() => setSettingsOpen(true)} />
-        <div className="splitter-v" role="separator" tabIndex={0} aria-label="Resize media panel" aria-orientation="vertical" aria-valuenow={layout.lib} aria-valuemin={210} aria-valuemax={420} onMouseDown={dragSplitter('lib')} onKeyDown={resizeWithKey('lib')} data-tooltip="Resize media panel · drag or use arrow keys" />
+        <div className="splitter-v" role="separator" tabIndex={0} aria-label={uiText("Resize media panel")} aria-orientation="vertical" aria-valuenow={layout.lib} aria-valuemin={210} aria-valuemax={420} onMouseDown={dragSplitter('lib')} onKeyDown={resizeWithKey('lib')} data-tooltip={uiText("Resize media panel · drag or use arrow keys")} />
         <div className="center">
           <Preview />
         </div>
         <SelectionInspector />
       </div>
-      <div className="splitter-h" role="separator" tabIndex={0} aria-label="Resize timeline" aria-orientation="horizontal" aria-valuenow={layout.tl} aria-valuemin={190} aria-valuemax={560} onMouseDown={dragSplitter('tl')} onKeyDown={resizeWithKey('tl')} data-tooltip="Resize timeline · drag or use arrow keys" />
+      <div className="splitter-h" role="separator" tabIndex={0} aria-label={uiText("Resize timeline")} aria-orientation="horizontal" aria-valuenow={layout.tl} aria-valuemin={190} aria-valuemax={560} onMouseDown={dragSplitter('tl')} onKeyDown={resizeWithKey('tl')} data-tooltip={uiText("Resize timeline · drag or use arrow keys")} />
       <Timeline />
       <Tooltips />
       {settingsOpen && <AgentConnection onClose={() => setSettingsOpen(false)} />}
@@ -229,7 +234,7 @@ export default function App() {
 
 function splitWithToast(): void {
   const err = useStore.getState().splitAtPlayhead();
-  toast(err ?? `Split at ${fmtTime(useStore.getState().playhead)}`);
+  toast(err ?? uiText("Split at {0}", { 0: fmtTime(useStore.getState().playhead) }));
 }
 
 function recoveryCandidate(value: unknown): BrowserRecovery | null {

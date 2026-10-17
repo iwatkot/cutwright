@@ -24,6 +24,7 @@ tsconfig.tsbuildinfo
 /PRODUCT_GOALS.md
 /RELEASE_CANDIDATE.md
 .env
+/electron/localeData.ts
 .env.*
 !.env.example
 

@@ -417,7 +417,7 @@ table.keys td:first-child { width: 140px; color: var(--text); }
 .selection-properties .ui-field { flex: initial; }
 .selection-properties .inspector > .overlay-inspector, .selection-properties .inspector > .ui-section { grid-column: 1/-1; }
 .topbar .ui-select { width: 88px; min-width: 72px; max-width: 88px; height: 30px; min-height: 30px; font-size: 11px; flex: none; }
-.topbar .theme-control { width: 66px; min-width: 66px; }
+.topbar .theme-control { width: 30px; min-width: 30px; }
 .topbar .ui-select svg { width: 12px; height: 12px; }
 .mediafilters { gap: 4px; flex-wrap: nowrap; margin-bottom: 9px; }
 .mediafilters .icon-button { border: 1px solid var(--stroke); background: var(--input-bg); width: 34px; height: 30px; }

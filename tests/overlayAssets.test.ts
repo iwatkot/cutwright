@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadOverlayAssets, overlayPreviewTime, saveOverlayAsset, scaleOverlay } from '../src/lib/overlayAssets';
 import { overlayFrame, validateOverlay } from '../src/lib/overlay';
 import type { ArrowOverlay, TitleOverlay } from '../src/lib/types';
+import { setLocale } from '../src/i18n/core';
 
 const canvas = { width: 1920, height: 1080 };
 const arrow: ArrowOverlay = { kind: 'arrow', x1: 300, y1: 600, x2: 1200, y2: 200, width: 20, color: '#D44B47', head: true, drawDuration: .5, animationDuration: 3, animationOffset: -1.755 };
@@ -13,9 +14,19 @@ beforeEach(() => {
   vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value) });
   vi.stubGlobal('window', { dispatchEvent: vi.fn() });
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { setLocale('en'); vi.unstubAllGlobals(); });
 
 describe('reusable native overlay assets', () => {
+  it('names new unnamed assets in the current language without renaming saved or authored names', () => {
+    setLocale('de');
+    expect(saveOverlayAsset('', arrow, canvas)).toBe(true);
+    expect(saveOverlayAsset('   ', arrow, canvas)).toBe(true);
+    expect(saveOverlayAsset('Arrow', arrow, canvas)).toBe(true);
+    setLocale('cs');
+    expect(loadOverlayAssets().map(asset => asset.name)).toEqual(['Pfeil', 'Pfeil (2)', 'Arrow']);
+    expect(saveOverlayAsset('', arrow, canvas)).toBe(true);
+    expect(loadOverlayAssets().map(asset => asset.name)).toEqual(['Pfeil', 'Pfeil (2)', 'Arrow', 'Šipka']);
+  });
   it('preserves different same-name arrows and updates only an explicit asset id', () => {
     expect(saveOverlayAsset('ArrowShaped4', arrow, canvas)).toBe(true);
     expect(saveOverlayAsset('ArrowShaped4', { ...arrow, x2: 1500 }, canvas)).toBe(true);

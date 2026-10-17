@@ -4,6 +4,7 @@ export interface DesktopAgentConnectionStatus { enabled: boolean; editor?: strin
 export interface DesktopExportPayload { args: string[]; srt: string | null; durationSec?: number; outputPath?: string }
 export interface CutwrightDesktopApi {
   platform: string;
+  setLocale(locale: string): Promise<void>;
   detectClis(): Promise<{ name: string; found: boolean; version?: string }[]>;
   runAgentCli(provider: string, prompt: string): Promise<{ ok: boolean; text: string }>;
   callLlm(provider: string, model: string, apiKey: string, prompt: string): Promise<{ ok: boolean; text: string }>;
