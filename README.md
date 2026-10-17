@@ -18,11 +18,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/iwatkot/cutwright/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/iwatkot/cutwright?style=flat-square&amp;color=149ee8"></a>
+  <a href="https://github.com/iwatkot/cutwright/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/iwatkot/cutwright?style=flat-square&amp;color=149ee8&amp;display_name=tag"></a>
   <a href="https://github.com/iwatkot/cutwright/actions/workflows/release.yml"><img alt="Release pipeline" src="https://img.shields.io/github/actions/workflow/status/iwatkot/cutwright/release.yml?style=flat-square&amp;label=release"></a>
-  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/github/license/iwatkot/cutwright?style=flat-square"></a>
+  <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-34a76f?style=flat-square"></a>
   <a href="https://hub.docker.com/r/iwatkot/cutwright"><img alt="Docker pulls" src="https://img.shields.io/docker/pulls/iwatkot/cutwright?style=flat-square&amp;logo=docker&amp;logoColor=white"></a>
-  <a href="https://github.com/iwatkot/cutwright/releases"><img alt="Release downloads" src="https://img.shields.io/github/downloads/iwatkot/cutwright/total?style=flat-square"></a>
   <a href="https://github.com/iwatkot/cutwright/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/iwatkot/cutwright?style=flat-square"></a>
 </p>
 
