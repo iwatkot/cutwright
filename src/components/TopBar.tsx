@@ -43,9 +43,11 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
     const unsub = useStore.subscribe((s) => setDirty(projectFingerprint(s.project) !== savedRef.current));
     const clean = () => { projectSession.current++; savedRef.current = projectFingerprint(useStore.getState().project); setDirty(false); };
     const invalidate = () => { projectSession.current++; };
+    const saved = (event: Event) => { const project = (event as CustomEvent<Project>).detail; savedRef.current = projectFingerprint(project); setDirty(projectFingerprint(useStore.getState().project) !== savedRef.current); };
     window.addEventListener('cw-project-loaded', clean);
     window.addEventListener('cw-project-will-load', invalidate);
-    return () => { unsub(); window.removeEventListener('cw-project-loaded', clean); window.removeEventListener('cw-project-will-load', invalidate); };
+    window.addEventListener('cw-project-saved', saved);
+    return () => { unsub(); window.removeEventListener('cw-project-saved', saved); window.removeEventListener('cw-project-loaded', clean); window.removeEventListener('cw-project-will-load', invalidate); };
   }, []);
   const setProject = useStore((s) => s.setProject);
   const addMedia = useStore((s) => s.addMedia);

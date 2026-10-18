@@ -29,7 +29,7 @@ for (const provider of ['codex', 'claude']) {
   try {
     await client.connect(transport);
     assert.equal(client.getServerVersion().version, version);
-    const tools = await client.listTools(); assert.equal(tools.tools.length, 7); report.discoveredTools = true;
+    const tools = await client.listTools(); assert.equal(tools.tools.length, 12); report.discoveredTools = true;
     const missing = await client.callTool({ name: 'get_project', arguments: {} }); assert.equal(missing.isError, true);
     const candidates = await Promise.all(Array.from({ length: 12 }, async (_, i) => {
       try { const response = await fetch(`http://127.0.0.1:${47831 + i}/health`, { signal: AbortSignal.timeout(1000) }); const value = await response.json(); return value.processId === transport.pid ? value : undefined; } catch { return undefined; }

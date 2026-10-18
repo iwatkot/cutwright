@@ -2,9 +2,10 @@ import { createEditorToolController } from './editorTools';
 import { createWebMcpAdapter } from './webMcp';
 import { createBrowserConnector } from './browserConnector';
 import { exportJobs } from './exportJobs';
+import { browserEditorFiles } from './editorFiles';
 
 export type AgentMethod = 'codex' | 'claude' | 'webmcp';
-export const editorController = createEditorToolController({ jobs: exportJobs });
+export const editorController = createEditorToolController({ jobs: exportJobs, ...(!window.cutwright ? { files: browserEditorFiles } : {}) });
 export const webMcp = createWebMcpAdapter(editorController);
 export const browserConnector = createBrowserConnector(editorController);
 void webMcp.setActive(false);

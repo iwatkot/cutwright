@@ -65,7 +65,9 @@ describe('all-track preview composition', () => {
     p.transitions = [{ id: 'slide-in', defId: 'slide-up', anchorClipId: 'overlay-a', at: 0, duration: 2, entrance: true }];
     expect(resolvePreviewComposition(p, BUILTIN_TRANSITIONS, .5)[1].layers[0].style.transform).toBe('translateY(75%)');
     p.transitions[0].defId = 'fade-to-white';
-    expect(resolvePreviewComposition(p, BUILTIN_TRANSITIONS, 1)[1].fill).toEqual({ color: '#FFFFFF', opacity: 1 });
+    expect(resolvePreviewComposition(p, BUILTIN_TRANSITIONS, 0)[1].fill).toEqual({ color: '#FFFFFF', opacity: 1 });
+    expect(resolvePreviewComposition(p, BUILTIN_TRANSITIONS, 1)[1].fill).toEqual({ color: '#FFFFFF', opacity: .5 });
+    expect(resolvePreviewComposition(p, BUILTIN_TRANSITIONS, 1)[1].layers[0].style.opacity).toBe(.5);
     p.transitions[0].defId = 'cut';
     expect(resolvePreviewComposition(p, BUILTIN_TRANSITIONS, .5)[1].layers[0].style).toMatchObject({ opacity: 1 });
   });

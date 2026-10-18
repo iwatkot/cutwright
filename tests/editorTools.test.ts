@@ -18,6 +18,50 @@ const initial = useStore.getState();
 beforeEach(() => { useStore.setState({ ...initial, project: fixture(), past: [], future: [] }, true); });
 afterEach(() => { controllers.splice(0).forEach((c) => c.dispose()); vi.unstubAllGlobals(); useStore.setState(initial, true); });
 
+describe('agent assembly and local files', () => {
+  it('creates silent picture, separate narration and independently editable rolling layers in one undo step', async () => {
+    const c = controller(), before = structuredClone(useStore.getState().project);
+    const overlay = { kind: 'title', text: 'Heading\nNames', fontFamily: 'Arial', fontSize: 36, fontWeight: 900, color: '#FFFFFF', x: 20, y: 30, blockWidth: 600, lineHeight: 44, align: 'center', scroll: { fromY: 360, toY: -100, duration: 8 } };
+    const result = await c.execute('apply_edits', { expectedRevision: c.status.revision, ops: [
+      { type: 'setProjectInfo', name: 'Assembly', fps: 30 },
+      { type: 'addTrack', trackId: 'a2' },
+      { type: 'addClip', clipId: 'picture', mediaId: 'm', trackId: 'v1', start: 12, duration: 3, mutedAudio: true },
+      { type: 'addClip', clipId: 'voice', mediaId: 'm', trackId: 'a2', start: 12, duration: 3, volume: .05 },
+      { type: 'addOverlay', clipId: 'credits', name: 'Credits', trackId: 'v2', start: 15, duration: 8, overlay },
+    ] });
+    expect(result.ok).toBe(true);
+    expect(useStore.getState().project.clips.filter(clip => clip.id === 'picture' || clip.linkGroup)).toEqual([expect.objectContaining({ id: 'picture', mutedAudio: true })]);
+    expect(useStore.getState().project.clips.find(clip => clip.id === 'credits')?.overlay).toEqual(overlay);
+    expect(useStore.getState().past).toHaveLength(1);
+    expect((await c.execute('undo', { expectedRevision: result.revision })).ok).toBe(true);
+    expect(useStore.getState().project).toEqual(before);
+  });
+  it('does not commit any of an assembly batch when a later clip has an invalid source range', async () => {
+    const c = controller(), before = useStore.getState().project;
+    const result = await c.execute('apply_edits', { expectedRevision: c.status.revision, ops: [ { type: 'addTrack', trackId: 'a2' }, { type: 'addClip', mediaId: 'm', trackId: 'v1', start: 12, duration: 40 } ] });
+    expect(result).toMatchObject({ ok: false, error: { code: 'REJECTED_EDITS' } });
+    expect(useStore.getState().project).toBe(before); expect(useStore.getState().past).toHaveLength(0);
+  });
+  it('rejects completed asynchronous import after manual edits or disconnect', async () => {
+    let complete!: (value: Project['media']) => void;
+    const files = { import: () => new Promise<Project['media']>(resolve => { complete = resolve; }), open: vi.fn(), save: vi.fn() };
+    const c = controller({ files });
+    const pending = c.execute('import_media', { expectedRevision: c.status.revision, files: [{ name: 'test.mp4', url: 'http://127.0.0.1:47831/media/abc', token: 'a' }] });
+    useStore.getState().updateClip('c1', { volume: .25 });
+    complete([{ id: 'new', name: 'test', kind: 'video', src: 'cutwright-local:test', duration: 5, color: '#FFFFFF' }]);
+    expect(await pending).toMatchObject({ ok: false, error: { code: 'STALE_REVISION' } });
+    expect(useStore.getState().project.media).toHaveLength(1);
+  });
+  it('imports library media atomically and can undo without altering existing clips', async () => {
+    const files = { import: vi.fn(async () => [{ id: 'imported', name: 'voice.wav', kind: 'audio' as const, src: 'cutwright-local:test', duration: 4, color: '#FFFFFF' }]), open: vi.fn(), save: vi.fn() };
+    const c = controller({ files }), before = structuredClone(useStore.getState().project);
+    const result = await c.execute('import_media', { expectedRevision: c.status.revision, files: [{ name: 'voice.wav', url: 'http://127.0.0.1:47831/media/abc', token: 'a' }] });
+    expect(result.ok).toBe(true); expect(useStore.getState().project.media).toHaveLength(2);
+    expect(useStore.getState().project.clips).toEqual(before.clips);
+    await c.execute('undo', { expectedRevision: result.revision }); expect(useStore.getState().project).toEqual(before);
+  });
+});
+
 describe('external editor tool controller', () => {
   it('commits an entire batch through the actual store once and undoes/redoes one transaction', async () => {
     const c = controller(), before = c.status.revision;
@@ -153,7 +197,7 @@ describe('external editor tool controller', () => {
   it('defaults to disabled and permanently rejects saved handles after disposal', async () => {
     const c = controller({ enabled: false }); expect(c.listTools()).toEqual([]);
     expect(await c.execute('get_project', {})).toMatchObject({ error: { code: 'DISABLED' } });
-    c.setEnabled(true); expect(c.listTools()).toHaveLength(7);
+    c.setEnabled(true); expect(c.listTools()).toHaveLength(12);
     const definitions = c.listTools(); definitions[0].name = 'modified'; expect(c.listTools()[0].name).toBe('get_project');
     c.dispose(); c.setEnabled(true); expect(c.enabled).toBe(false); expect(c.listTools()).toEqual([]);
     expect(await c.execute('get_project', {})).toMatchObject({ error: { code: 'DISPOSED' } });

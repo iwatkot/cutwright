@@ -267,9 +267,10 @@ export function buildExportArgs(project: Project, defs: TransitionDef[], srtPath
     if (def.preview === 'blur') return applyEntranceFx(label, 0, duration, clip.duration, alpha);
     const blank = next('enterblank'); const incoming = next('enterin'); const out = next('entered');
     const fmt = alpha ? 'yuva444p' : 'yuv444p';
-    filters.push(`color=c=${alpha ? 'black@0' : 'black'}:s=${W}x${H}:r=${fps}:d=${f3(duration + 1 / fps)},format=${fmt},trim=end_frame=${Math.max(1, frameAt(duration))},settb=AVTB[${blank}]`);
+    filters.push(`color=c=${def.xfade === 'fadewhite' ? 'white' : alpha ? 'black@0' : 'black'}:s=${W}x${H}:r=${fps}:d=${f3(duration + 1 / fps)},format=${fmt},trim=end_frame=${Math.max(1, frameAt(duration))},settb=AVTB[${blank}]`);
     filters.push(`[${label}]format=${fmt},settb=AVTB[${incoming}]`);
-    filters.push(`[${blank}][${incoming}]xfade=transition=${def.xfade}:duration=${f3(duration)}:offset=0,format=${fmt},fps=${fps},tpad=stop_mode=clone:stop_duration=${1 / fps},trim=end_frame=${framesBetween(clip.start, clip.start + clip.duration)},setpts=PTS-STARTPTS,format=${alpha ? 'yuva420p' : 'yuv420p'},settb=AVTB[${out}]`);
+    const effect = def.xfade === 'fadewhite' || def.xfade === 'fadeblack' ? 'fade' : def.xfade;
+    filters.push(`[${blank}][${incoming}]xfade=transition=${effect}:duration=${f3(duration)}:offset=0,format=${fmt},fps=${fps},tpad=stop_mode=clone:stop_duration=${1 / fps},trim=end_frame=${framesBetween(clip.start, clip.start + clip.duration)},setpts=PTS-STARTPTS,format=${alpha ? 'yuva420p' : 'yuv420p'},settb=AVTB[${out}]`);
     return out;
   };
 

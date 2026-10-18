@@ -4,6 +4,7 @@ import { useStore } from './store';
 import { parseAgentOps, applyOpsToProject } from './agentOps';
 import { validateProject } from './validate';
 import type { Project } from './types';
+import type { EditorFiles, StagedEditorFile } from './editorFiles';
 
 export type EditorExportPreset = 'source' | '1080' | '720' | '480';
 export interface EditorExportJobSnapshot {
@@ -26,6 +27,7 @@ export interface EditorActionEntry {
 export interface EditorToolStatus { enabled: boolean; revision: string; canUndo: boolean; canRedo: boolean; history: EditorActionEntry[] }
 export type EditorToolResult = { ok: boolean; revision: string; error?: { code: string; message: string; details?: string[] }; [key: string]: unknown };
 export interface EditorToolOptions {
+  files?: EditorFiles;
   jobs?: EditorExportJobs;
   enabled?: boolean;
   historyLimit?: number;
@@ -105,6 +107,41 @@ export function createEditorToolController(options: EditorToolOptions = {}) {
     if (!definition.annotations.readOnlyHint && args.expectedRevision !== before) return failure('STALE_REVISION', 'The project changed. Read get_project and retry with its revision.');
     try {
       if (name === 'get_project') return { ok: true, revision: revision(), project: clone(semanticProject(store.getState().project)), definitions: clone(store.getState().allDefs()), canUndo: status().canUndo, canRedo: status().canRedo, history: status().history };
+      if (name === 'seek_preview') { store.getState().setPlaying(false); store.getState().setPlayhead(args.time as number); return { ok: true, revision: revision(), time: store.getState().playhead }; }
+      if (name === 'save_download') {
+        if (!options.files?.download || !args.destination) return failure('FILES_UNAVAILABLE', 'Absolute paths require the browser stdio connector.');
+        const result = await options.files.download(args.downloadUrl as string, args.destination as { url: string; token: string });
+        record(name, before, 'Saved editable project or video locally.'); return { ok: true, revision: revision(), ...result };
+      }
+      if (['import_media', 'open_project', 'save_project'].includes(name)) {
+        if (!options.files) return failure('FILES_UNAVAILABLE', 'Local file operations are unavailable in this editor session.');
+        if (name === 'save_project') {
+          const result = await options.files.save(clone(store.getState().project));
+          record(name, before, 'Saved editable project locally.'); return { ok: true, revision: revision(), ...result };
+        }
+        if (name === 'import_media') {
+          if (!args.files) return failure('FILES_UNAVAILABLE', 'Absolute paths require the browser stdio connector.');
+          const imported = await options.files.import(args.files as StagedEditorFile[]);
+          if (!enabled || disposed || revision() !== before) return failure('STALE_REVISION', 'The project or connection changed during import. No media was added.');
+          const current = store.getState(), media = [...current.project.media];
+          const ids: string[] = [];
+          for (const item of imported) {
+            const index = media.findIndex(m => m.name.toLowerCase() === item.name.toLowerCase() && (!m.src || m.offline) && !m.overlay);
+            if (index >= 0) { media[index] = { ...item, id: media[index].id }; ids.push(media[index].id); }
+            else { media.push(item); ids.push(item.id); }
+          }
+          store.setState({ project: { ...current.project, media }, past: [...current.past.slice(-40), clone(current.project)], future: [] });
+          record(name, before, `Imported ${ids.length} local file(s).`);
+          return { ok: true, revision: revision(), media: clone(semanticProject(store.getState().project).media.filter(m => ids.includes(m.id))) };
+        }
+        if (!args.file) return failure('FILES_UNAVAILABLE', 'Absolute paths require the browser stdio connector.');
+        const restored = await options.files.open(args.file as StagedEditorFile);
+        if (!enabled || disposed || revision() !== before) return failure('STALE_REVISION', 'The project or connection changed while opening. No document was replaced.');
+        store.getState().setProject(restored.project); store.getState().setPlaying(false); store.getState().setPlayhead(0);
+        generation++; // Even identical documents form a new revision boundary.
+        if (typeof window !== 'undefined') window.dispatchEvent(new Event('cw-project-loaded'));
+        record(name, before, 'Opened editable project.'); return { ok: true, revision: revision(), missing: restored.missing };
+      }
       if (name === 'apply_edits') {
         const text = JSON.stringify({ ops: args.ops });
         if (text.length > 2 * 1024 * 1024) return failure('INVALID_ARGUMENTS', 'Editing transaction exceeds the 2 MiB input limit.');

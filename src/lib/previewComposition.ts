@@ -76,8 +76,10 @@ export function resolvePreviewComposition(project: Project, defs: TransitionDef[
       const entrance = project.transitions.find((t) => t.entrance && (t.anchorClipId ? t.anchorClipId === clip.id : id === baseId && Math.abs(t.at - clip.start) < .26));
       const entryDef = entrance ? defMap.get(entrance.defId) : undefined;
       const p = entrance && entryDef && entryDef.id !== 'cut' ? clamp(local / Math.max(.001, Math.min(entrance.duration, clip.duration))) : 1;
-      const entry = p < 1 && entryDef ? transitionPreviewStyles(entryDef, p, pixelScale) : undefined;
-      const entryStyle = entry?.incoming ?? {};
+      const entry = p < 1 && entryDef ? entryDef.xfade === 'fadewhite' || entryDef.xfade === 'fadeblack'
+        ? { incoming: { opacity: p, mixBlendMode: 'plus-lighter' as const }, fill: { color: entryDef.xfade === 'fadewhite' ? '#FFFFFF' : '#000000', opacity: 1 - p } }
+        : transitionPreviewStyles(entryDef, p, pixelScale) : undefined;
+      const entryStyle: CSSProperties = entry?.incoming ?? {};
       const filter = [style.filter, entryStyle.filter].filter(Boolean).join(' ');
       const transform = [style.transform, entryStyle.transform].filter(Boolean).join(' ');
       return { clip, frozen, sourceTime: clip.offset + local * (clip.speed ?? 1),

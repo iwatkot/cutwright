@@ -113,6 +113,30 @@ Agent access is optional and starts disabled. The browser connectors run on your
 
 ## Development
 
+### Persistent browser MCP from a CLI session
+
+For an already-running agent session that cannot register new MCP servers, use the repository's local MCP SDK client. It forwards advertised tools to the same packaged stdio connector; it never edits project storage directly. Node.js 22+ and the source dependencies are required.
+
+```powershell
+npm run build:connectors
+node scripts/browser-agent-session.mjs --port=47903
+```
+
+Keep that process running. Open your local browser editor, choose **Agent → Codex → Connect**, and keep the intended tab open. If several connectors appear, match its session code using the connection error from the first project query. No global account or agent configuration changes are required. In a second terminal:
+
+```powershell
+node scripts/browser-agent-call.mjs health
+node scripts/browser-agent-call.mjs tools
+node scripts/browser-agent-call.mjs get_project
+node scripts/browser-agent-call.mjs apply_edits --file edit-arguments.json
+```
+
+Use the current `get_project.revision` as `expectedRevision` for every side effect. Discover the complete schemas with `tools`; a JSON arguments file avoids shell quoting issues. `import_media` accepts absolute local `paths`, probes original media in the browser and returns library IDs. `apply_edits` supports explicit track/clip creation and independently styled editable title layers, including pixel positions and rolling credits. `seek_preview` pauses and seeks the visible preview. Check decoded media readiness before taking screenshots.
+
+`save_project` creates a validated editable project result. `export_video` starts the editor's real browser export; poll `get_export` until completed. Pass the returned `downloadUrl`, the latest `expectedRevision` and an absolute `.json` or `.mp4` `outputPath` to `save_download`. The paired connector writes those exact browser-produced bytes locally and refuses to overwrite existing files. Keep original media and the browser profile/origin; use `open_project` with an absolute saved project `path` to restore the editable project. Browser URLs last only while the tab and retained result remain available.
+
+The adapter listens only on `127.0.0.1`, rejects browser-origin requests, and reports its own and connector process IDs via `health`. Use `--port=<port>` on both scripts for another session. Ctrl+C stops only this adapter and its connector. After rebuilding connector/tool schemas, POST `/reload-connector` on that adapter, reload the editor when its code changed, and reconnect through **Agent → Codex → Connect**. Read the project again; old revisions are invalid. Save first and preserve the editor URL/profile across reloads. If observing through Playwright CDP, attach with `{ noDefaults: true }` so the observer preserves the owner's download and browser settings.
+
 ### Build
 
 ```sh

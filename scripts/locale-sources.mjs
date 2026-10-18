@@ -57,7 +57,7 @@ export function collectMessages(){
   };visit(source);
  }
  // These remain stable diagnostics on the wire; localize them where the app presents them.
- const runtimeFiles=['browserConnector','webMcp','agentConnection','exportJobs','browserExport','browserAudio','browserExportStorage','browserMedia','browserPcm','browserTempo','browserVideoDecoder','browserComposition','previewComposition','ffmpegPlan','validate','overlay','overlayAssets','clipEdits','editorTools','agentOps','shortcuts','movavi','store'];
+ const runtimeFiles=['browserConnector','webMcp','agentConnection','exportJobs','browserExport','browserAudio','browserExportStorage','browserMedia','browserPcm','browserTempo','browserVideoDecoder','browserComposition','previewComposition','ffmpegPlan','validate','overlay','overlayAssets','clipEdits','editorTools','editorFiles','agentOps','shortcuts','movavi','store'];
  for(const file of [...runtimeFiles.map(name=>`src/lib/${name}.ts`),'connector/server.ts','electron/main.ts','electron/projectFiles.ts','electron/exportRunner.ts','electron/mcpBridge.ts','electron/exportDestination.ts']){
   const source=parse(file);
   const descendants=node=>{

@@ -328,7 +328,9 @@ function applyEntrance(dst: BrowserCanvasContext, scratch: BrowserCanvasContext,
     dst.putImageData(sharp, 0, 0);
   } else {
     const input = dst.getImageData(0, 0, W, H), blank = scratch.createImageData(W, H), result = scratch.createImageData(W, H);
-    if (base) for (let i = 3; i < blank.data.length; i += 4) blank.data[i] = 255;
-    transitionRgba(blank.data, input.data, W, H, entry.def.xfade, p, result.data); dst.putImageData(result, 0, 0);
+    if (entry.def.xfade === 'fadewhite') blank.data.fill(255);
+    else if (base) for (let i = 3; i < blank.data.length; i += 4) blank.data[i] = 255;
+    const effect = entry.def.xfade === 'fadewhite' || entry.def.xfade === 'fadeblack' ? 'fade' : entry.def.xfade;
+    transitionRgba(blank.data, input.data, W, H, effect, p, result.data); dst.putImageData(result, 0, 0);
   }
 }
