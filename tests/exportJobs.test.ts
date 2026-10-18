@@ -55,7 +55,7 @@ describe('shared local export job lifecycle', () => {
     expect(await service.cancel(job.id)).toBe(true); expect(native.cancelExport).toHaveBeenCalledTimes(1); expect(service.get(job.id)?.stage).toBe('Cancelling');
     pending.resolve({ ok: false, error: 'Export cancelled' }); await waitStatus(job.id, 'cancelled');
     expect(unsubscribe).toHaveBeenCalledTimes(1); expect(await service.cancel(job.id)).toBe(false);
-    const retry = await service.start({ preset: '480' }); await waitStatus(retry.id, 'completed'); expect(mocks.plan.mock.calls[1][4]).toMatchObject({ maxHeight: 480, crf: 21 });
+    const retry = await service.start({ preset: '480' }); await waitStatus(retry.id, 'completed'); expect(mocks.plan.mock.calls[1][4]).toMatchObject({ maxHeight: 480, crf: 18 });
   });
 
   it('cancels queued work before invoking a codec or native renderer', async () => {
@@ -104,5 +104,24 @@ describe('shared local export job lifecycle', () => {
     disposers[0].mockRejectedValue(new Error('Retired file already gone'));
     for (let i = 0; i < 5; i++) { const job = await service.start({ preset: 'source' }); await waitStatus(job.id, 'completed'); }
     expect(service.get(first.id)).toBeUndefined(); expect(disposers[0]).toHaveBeenCalledTimes(1); expect(disposers[1]).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('export quality routing', () => {
+  it('passes the same independent quality to native planning and browser export without editing the project', async () => {
+    const before = structuredClone(store.getState().project);
+    const nativeJob = await service.start({ preset: '720', quality: 'balanced' });
+    await waitStatus(nativeJob.id, 'completed');
+    expect(mocks.plan.mock.calls[0][4]).toMatchObject({ maxHeight: 720, crf: 23 });
+    expect(service.get(nativeJob.id)?.quality).toBe('balanced');
+    vi.stubGlobal('window', { dispatchEvent: vi.fn() });
+    mocks.browser.mockResolvedValue({ file: { name: 'movie.mp4' }, url: 'blob:test', report: {}, dispose: vi.fn() });
+    const browserJob = await service.start({ preset: 'source', quality: 'compact' });
+    await waitStatus(browserJob.id, 'completed');
+    expect(mocks.browser.mock.calls[0][2]).toMatchObject({ maxHeight: undefined, quality: 'compact' });
+    expect(service.get(browserJob.id)?.quality).toBe('compact');
+    expect(store.getState().project).toEqual(before);
+    expect(store.getState().past).toEqual([]);
   });
 });

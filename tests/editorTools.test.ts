@@ -187,6 +187,17 @@ describe('external editor tool controller', () => {
     expect(jobs.cancel).toHaveBeenCalledWith('job1'); expect(useStore.getState().past).toEqual([]);
   });
 
+  it('accepts explicit quality independently of resolution and rejects unsupported quality before starting', async () => {
+    const jobs = { start: vi.fn(() => ({ id: 'quality-job', status: 'queued', progress: 0 })), get: vi.fn(), cancel: vi.fn() };
+    const c = controller({ jobs }), expectedRevision = c.status.revision;
+    expect(await c.execute('export_video', { expectedRevision, preset: '1080', quality: 'balanced' })).toMatchObject({ ok: true, revision: expectedRevision });
+    expect(jobs.start).toHaveBeenCalledWith({ preset: '1080', quality: 'balanced' });
+    const rejected = await c.execute('export_video', { expectedRevision, preset: '1080', quality: 'unknown' });
+    expect(rejected.ok).toBe(false);
+    expect(jobs.start).toHaveBeenCalledTimes(1);
+    expect(useStore.getState().past).toEqual([]);
+  });
+
   it('reports unavailable jobs and unavailable undo/redo without mutating state', async () => {
     const c = controller(), expectedRevision = c.status.revision;
     expect(await c.execute('export_video', { expectedRevision, preset: 'source' })).toMatchObject({ error: { code: 'EXPORT_UNAVAILABLE' } });

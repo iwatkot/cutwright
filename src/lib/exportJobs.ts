@@ -4,6 +4,7 @@ import { subtitlesToAss } from './captions';
 import { isBrowserMediaSource } from './browserMedia';
 import { validateProject } from './validate';
 import type { EditorExportJobSnapshot, EditorExportJobs } from './editorTools';
+import { exportQualitySettings } from './exportQuality';
 
 type Job = { snapshot: EditorExportJobSnapshot; abort: AbortController; dispose?: () => Promise<void> };
 const jobs = new Map<string, Job>();
@@ -24,15 +25,16 @@ export const exportJobs: EditorExportJobs & {
   subscribe(listener: () => void): () => void;
   latest(): EditorExportJobSnapshot | null;
 } = {
-  start({ preset, outputPath }) {
+  start({ preset, quality = 'high', outputPath }) {
     if (activeId) throw new Error('An export is already running. Cancel it or wait for completion.');
+    const qualitySettings = exportQualitySettings(quality);
     const state = useStore.getState();
     const validation = validateProject(state.project);
     if (!validation.ok) throw new Error(`Cannot export this project: ${validation.errors[0]}`);
     const project = structuredClone(state.project);
     const defs = structuredClone(state.allDefs());
     const id = crypto.randomUUID();
-    const job: Job = { snapshot: { id, status: 'queued', progress: 0, stage: 'Opening local media', preset }, abort: new AbortController() };
+    const job: Job = { snapshot: { id, status: 'queued', progress: 0, stage: 'Opening local media', preset, quality }, abort: new AbortController() };
     jobs.set(id, job); activeId = id; latest = job.snapshot;
     state.setPlaying(false);
     // Keep a small number of retrievable results; release retired local files.
@@ -53,7 +55,7 @@ export const exportJobs: EditorExportJobs & {
             return !clip.overlay && !media?.overlay && (!media?.src || media.src.startsWith('blob:') || isBrowserMediaSource(media.src) || media.offline);
           });
           if (missing.length) throw new Error(`${missing.length} timeline clip(s) need media. Use Import to relink their files before exporting.`);
-          const plan = buildExportArgs(project, defs, project.subtitles.length ? 'CWSRTTOKEN' : null, '__OUT__', { maxHeight, crf: preset === '480' ? 21 : 18 });
+          const plan = buildExportArgs(project, defs, project.subtitles.length ? 'CWSRTTOKEN' : null, '__OUT__', { maxHeight, crf: qualitySettings.crf });
           unsubscribe = window.cutwright.onExportProgress(({ seconds, total, stage }) => {
             if (!terminal(job.snapshot.status)) update(job, { progress: total > 0 ? Math.min(.99, seconds / total) : 0, stage: stage || 'Rendering composition' });
           });
@@ -70,7 +72,7 @@ export const exportJobs: EditorExportJobs & {
           if (outputPath) throw new Error('Browser exports are downloaded locally; outputPath is available in the desktop edition.');
           const { exportBrowserProject } = await import('./browserExport');
           const result = await exportBrowserProject(project, defs, {
-            maxHeight, signal: job.abort.signal,
+            maxHeight, quality, signal: job.abort.signal,
             onProgress: ({ progress, stage }) => update(job, { progress: progress / 100, stage }),
           });
           job.dispose = result.dispose;

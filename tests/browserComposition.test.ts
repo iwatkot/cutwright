@@ -164,3 +164,41 @@ describe('bounded browser compositor lifetime', () => {
     await expect(pending).rejects.toThrow(/disposed/); expect(close).toHaveBeenCalledOnce(); expect(compositor.overlayCacheEntries).toBe(0);
   });
 });
+
+
+describe('bounded accelerated body rendering with precise fallback', () => {
+  it('switches surfaces for an entrance and plain video without accumulating pools or closing source frames', async () => {
+    const hints: boolean[] = [], canvases: BrowserCanvas[] = [];
+    const createCanvas = (w: number, h: number) => { const c = fakeCanvas(w, h), get = c.getContext.bind(c); c.getContext = ((_kind: string, options: { willReadFrequently?: boolean }) => { hints.push(!!options?.willReadFrequently); return get('2d'); }) as typeof c.getContext; canvases.push(c); return c; };
+    const project = fixture({ media: [{ id: 'video', name: 'video', kind: 'video', src: 'video.mp4', duration: 4, color: '#FFFFFF' }], clips: [clip('video', 'v1', 0, 4)], transitions: [{ id: 'entry', defId: 'fade-to-white', at: 0, duration: 1, anchorClipId: 'video', entrance: true }] });
+    const compositor = createBrowserCompositor({ width: 8, height: 4, createCanvas });
+    const source = { displayWidth: 8, displayHeight: 4, draw: vi.fn(), close: vi.fn() };
+    const context = fakeCanvas(8, 4).getContext('2d') as BrowserCanvasContext;
+    for (const t of [0, .5, 1, 2, 3]) await compositor.renderFrame(project, BUILTIN_TRANSITIONS, t, new Map([['video', source]]), context);
+    expect(hints).toEqual([true, true, true, false, false, false]);
+    expect(canvases).toHaveLength(6); expect(source.close).not.toHaveBeenCalled();
+    compositor.dispose(); expect(canvases.every(c => c.width === 1 && c.height === 1)).toBe(true);
+  });
+
+  it('retains the still website while two other title layers roll', async () => {
+    const base = { kind: 'title' as const, fontFamily: 'Arial', fontSize: 2, fontWeight: 400, color: '#FFFFFF', x: 0, y: 0, blockWidth: 8, lineHeight: 3, align: 'left' as const };
+    const rasterizeSvg = vi.fn(async () => ({ width: 8, height: 4, close: vi.fn() }) as unknown as ImageBitmap);
+    const project = fixture({ clips: [clip('heading', 'v1', 0, 4, { overlay: { ...base, text: 'HEADING', scroll: { fromY: 2, toY: -5, duration: 4 } } }), clip('names', 'v2', 0, 4, { overlay: { ...base, text: 'NAMES', scroll: { fromY: 2, toY: -5, duration: 4 } } }), clip('site', 'v3', 0, 4, { overlay: { ...base, text: 'STATIC' } })] });
+    const compositor = createBrowserCompositor({ width: 8, height: 4, createCanvas: fakeCanvas, rasterizeSvg });
+    for (const t of [1, 2, 3]) await compositor.renderFrame(project, BUILTIN_TRANSITIONS, t, new Map(), fakeCanvas(8, 4).getContext('2d') as BrowserCanvasContext);
+    expect(rasterizeSvg.mock.calls.filter(([svg]) => svg.includes('STATIC'))).toHaveLength(1);
+    expect(compositor.overlayCacheEntries).toBeLessThanOrEqual(4);
+    compositor.dispose();
+  });
+
+  it('keeps implicit source fitting on the precise path', async () => {
+    const hints: boolean[] = [];
+    const createCanvas = (w: number, h: number) => { const c = fakeCanvas(w, h), get = c.getContext.bind(c); c.getContext = ((_kind: string, options: { willReadFrequently?: boolean }) => { hints.push(!!options?.willReadFrequently); return get('2d'); }) as typeof c.getContext; return c; };
+    const project = fixture({ media: [{ id: 'video', name: 'video', kind: 'video', src: 'video.mp4', duration: 4, color: '#FFFFFF' }], clips: [clip('video', 'v1', 0, 4)] });
+    const compositor = createBrowserCompositor({ width: 8, height: 4, createCanvas });
+    const source = { displayWidth: 4, displayHeight: 4, draw: vi.fn() };
+    await compositor.renderFrame(project, BUILTIN_TRANSITIONS, 2, new Map([['video', source]]), fakeCanvas(8, 4).getContext('2d') as BrowserCanvasContext);
+    expect(hints).toEqual([true, true, true]);
+    compositor.dispose();
+  });
+});

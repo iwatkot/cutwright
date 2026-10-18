@@ -14,6 +14,7 @@ import { drawCaption } from './captions';
 import { enableBrowserVideoDecoding } from './browserVideoDecoder';
 import { createBrowserExportScratch } from './browserExportStorage';
 import type { MediaItem, Project, TransitionDef } from './types';
+import { browserVideoBitrate, type ExportQuality } from './exportQuality';
 
 const SAMPLE_RATE = 48000;
 let aacRegistered = false;
@@ -21,6 +22,7 @@ let exporting = false;
 export interface BrowserExportProgress { stage: string; progress: number; frame: number; frames: number; elapsedSeconds: number }
 export interface BrowserExportOptions {
   maxHeight?: number;
+  quality?: ExportQuality;
   bitrate?: number;
   signal?: AbortSignal;
   onProgress?: (progress: BrowserExportProgress) => void;
@@ -31,6 +33,7 @@ export interface BrowserExportReport {
   width: number; height: number; fps: number; frames: number; duration: number;
   audioFrames: number; sampleRate: number; bytes: number; elapsedSeconds: number;
   audioChannels: 1 | 2; peakVideoDecoders: number; userAgent: string; videoBitrate: number;
+  quality: ExportQuality;
 }
 export interface BrowserExportResult { file: File; url: string; report: BrowserExportReport; dispose(): Promise<void> }
 
@@ -84,7 +87,8 @@ export async function exportBrowserProject(sourceProject: Project, defs: Transit
   const frames = Math.max(1, Math.round(duration * project.fps));
   const audioFrames = Math.round(duration * SAMPLE_RATE);
   const {width, height} = exportDimensions(project, options.maxHeight);
-  const bitrate = options.bitrate ?? Math.max(2e6, Math.round(width * height * project.fps * .32));
+  const quality = options.quality ?? 'high';
+  const bitrate = options.bitrate ?? browserVideoBitrate(width, height, project.fps, quality);
   const started = performance.now();
   const progress = (stage: string, frame = 0) => options.onProgress?.({ stage, progress: Math.min(99, Math.floor(frame / frames * 100)), frame, frames, elapsedSeconds: (performance.now() - started) / 1000 });
   const blobs = new Map<string, Promise<Blob>>();
@@ -213,7 +217,7 @@ export async function exportBrowserProject(sourceProject: Project, defs: Transit
     const name = `${project.name.replace(/[<>:"/\\|?*\x00-\x1f]/g, '-').trim() || 'CutWright'}.mp4`;
     const file = new File([stored], name, { type: 'video/mp4', lastModified: Date.now() });
     const url = URL.createObjectURL(file);
-    const report: BrowserExportReport = { width, height, fps: project.fps, frames, duration, audioFrames, sampleRate: SAMPLE_RATE, audioChannels: mixer.channels, bytes: file.size, elapsedSeconds: (performance.now() - started) / 1000, peakVideoDecoders, userAgent: navigator.userAgent, videoBitrate: bitrate };
+    const report: BrowserExportReport = { width, height, fps: project.fps, frames, duration, audioFrames, sampleRate: SAMPLE_RATE, audioChannels: mixer.channels, bytes: file.size, elapsedSeconds: (performance.now() - started) / 1000, peakVideoDecoders, userAgent: navigator.userAgent, videoBitrate: bitrate, quality };
     succeeded = true;
     let disposed = false;
     return { file, url, report, async dispose() { if (disposed) return; disposed = true; URL.revokeObjectURL(url); await scratch?.dispose(); } };
