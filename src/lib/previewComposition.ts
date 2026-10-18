@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import type { AppliedTransition, Clip, Project, TransitionDef } from './types';
+import { clipVisualGain, visualLastFrame } from './clipFades';
 
 export interface PreviewLayer {
   clip: Clip;
@@ -82,8 +83,10 @@ export function resolvePreviewComposition(project: Project, defs: TransitionDef[
       const entryStyle: CSSProperties = entry?.incoming ?? {};
       const filter = [style.filter, entryStyle.filter].filter(Boolean).join(' ');
       const transform = [style.transform, entryStyle.transform].filter(Boolean).join(' ');
+      const fadeLocal = Math.max(0, Math.min(visualLastFrame(clip, project.fps), (Math.round(time * project.fps) - Math.round(clip.start * project.fps)) / project.fps));
+      const visualGain = clipVisualGain(clip, fadeLocal, project.fps);
       return { clip, frozen, sourceTime: clip.offset + local * (clip.speed ?? 1),
-        style: { ...style, ...entryStyle, opacity: (clip.opacity ?? 1) * Number(style.opacity ?? 1) * Number(entryStyle.opacity ?? 1), ...(filter ? { filter } : {}), ...(transform ? { transform } : {}) }, fill: entry?.fill };
+        style: { ...style, ...entryStyle, opacity: (clip.opacity ?? 1) * visualGain * Number(style.opacity ?? 1) * Number(entryStyle.opacity ?? 1), ...(filter ? { filter } : {}), ...(transform ? { transform } : {}) }, fill: entry?.fill ? { ...entry.fill, opacity: entry.fill.opacity * visualGain } : undefined };
     };
     for (const applied of project.transitions.filter((t) => !t.entrance)) {
       const incomingIndex = clips.findIndex((c) => applied.anchorClipId ? c.id === applied.anchorClipId : id === baseId && Math.abs(c.start - applied.at) < .26);

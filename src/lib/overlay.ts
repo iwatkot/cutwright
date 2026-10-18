@@ -1,4 +1,6 @@
 import type { Clip, MediaItem, NativeOverlay, TitleOverlay } from './types';
+import type { ProjectFont } from './types';
+import { projectFontStyles } from './projectFonts';
 
 const clamp = (n: number) => Math.min(1, Math.max(0, n));
 const finite = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -69,7 +71,7 @@ export function overlayFrame(overlay: NativeOverlay, sourceTime: number) {
 
 /** Safe standalone SVG. Preview and the desktop alpha-video cache both call
  * this renderer; it never executes imported HTML, scripts or font URLs. */
-export function overlaySvg(overlay: NativeOverlay, width: number, height: number, sourceTime: number): string {
+export function overlaySvg(overlay: NativeOverlay, width: number, height: number, sourceTime: number, fonts?: ProjectFont[]): string {
   const frame = overlayFrame(overlay, sourceTime);
   let content = '';
   if (overlay.kind === 'arrow') {
@@ -94,5 +96,5 @@ export function overlaySvg(overlay: NativeOverlay, width: number, height: number
     content += lines.map((line, i) => `<text x="${n(x)}" y="${n(overlay.y + i * overlay.lineHeight)}" dominant-baseline="text-before-edge" xml:space="preserve">${xml(line)}</text>`).join('');
     content += '</g>';
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="width:100%;height:100%;display:block"><g opacity="${n(frame.opacity)}">${content}</g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="width:100%;height:100%;display:block">${overlay.kind === 'title' ? projectFontStyles(fonts, overlay.fontFamily) : ''}<g opacity="${n(frame.opacity)}">${content}</g></svg>`;
 }

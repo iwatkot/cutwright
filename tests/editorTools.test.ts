@@ -208,7 +208,7 @@ describe('external editor tool controller', () => {
   it('defaults to disabled and permanently rejects saved handles after disposal', async () => {
     const c = controller({ enabled: false }); expect(c.listTools()).toEqual([]);
     expect(await c.execute('get_project', {})).toMatchObject({ error: { code: 'DISABLED' } });
-    c.setEnabled(true); expect(c.listTools()).toHaveLength(12);
+    c.setEnabled(true); expect(c.listTools()).toHaveLength(13);
     const definitions = c.listTools(); definitions[0].name = 'modified'; expect(c.listTools()[0].name).toBe('get_project');
     c.dispose(); c.setEnabled(true); expect(c.enabled).toBe(false); expect(c.listTools()).toEqual([]);
     expect(await c.execute('get_project', {})).toMatchObject({ error: { code: 'DISPOSED' } });

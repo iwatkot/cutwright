@@ -9,13 +9,16 @@ import { execFileSync } from 'node:child_process';
 // A persistent MCP SDK client for CLI environments that cannot add MCP servers
 // to a running conversation. The application still owns all tool execution.
 const root = fileURLToPath(new URL('../', import.meta.url));
-const { version } = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+let version = pkg.version;
 let sourceCommit;
 try { sourceCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { /* A distributed source archive may not have Git metadata. */ }
 const options = Object.fromEntries(process.argv.slice(2).map(arg => arg.replace(/^--/, '').split('=')));
+try { const built = JSON.parse(readFileSync(path.join(root, 'dist', 'version.json'), 'utf8')); if (built.commit === sourceCommit) version = built.version; } catch { /* Build may not exist yet. */ }
 const port = Number(options.port ?? 47903), provider = options.client ?? 'codex';
 if (!Number.isInteger(port) || port < 1024 || port > 65535 || !['codex', 'claude'].includes(provider)) throw new Error('Use --port=1024..65535 and --client=codex|claude.');
 const entry = options.connector ? path.resolve(options.connector) : path.join(root, 'public', 'connectors', version, `cutwright-connector-${version}.cjs`);
+try { const built = JSON.parse(readFileSync(path.join(path.dirname(entry), 'connector-manifest.json'), 'utf8')); version = built.version; sourceCommit = built.commit; } catch { /* Plain standalone connector may not include a manifest. */ }
 let client, transport, definitions;
 async function connect() {
   transport = new StdioClientTransport({ command: process.execPath, args: [entry, `--client=${provider}`], stderr: 'inherit' });

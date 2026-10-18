@@ -10,6 +10,7 @@ import { browserCompositionDiagnostics, browserFramePlan, createBrowserComposito
 import { createBrowserAudioMixer } from './browserAudio';
 import { validateProject } from './validate';
 import { resolveOverlay } from './overlay';
+import { loadProjectFonts } from './projectFonts';
 import { drawCaption } from './captions';
 import { enableBrowserVideoDecoding } from './browserVideoDecoder';
 import { createBrowserExportScratch } from './browserExportStorage';
@@ -130,6 +131,7 @@ export async function exportBrowserProject(sourceProject: Project, defs: Transit
       checkAbort(options.signal);
       const item = media.get(id)!; await load(item);
     }
+    await loadProjectFonts(project);
     await document.fonts.ready;
     enableBrowserVideoDecoding();
     const schedules = browserVideoSchedules(project, defs, frames);

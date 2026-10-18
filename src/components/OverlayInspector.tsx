@@ -5,7 +5,9 @@ import type { Clip, NativeOverlay } from '../lib/types';
 import { useStore } from '../lib/store';
 import { reflowTitleScroll, resolveOverlay, validateOverlay } from '../lib/overlay';
 import { saveOverlayAsset } from '../lib/overlayAssets';
-import { toast } from './TopBar';
+import { toast, pickFile } from './TopBar';
+import { loadProjectFonts, prepareProjectFont } from '../lib/projectFonts';
+import { localizedDiagnostic } from '../i18n/presentation';
 import './overlay.css';
 
 export default function OverlayInspector({ clip }: { clip: Clip }) {
@@ -51,6 +53,17 @@ export default function OverlayInspector({ clip }: { clip: Clip }) {
       <InspectorSection title={uiText("Text")}>
         <Field label={uiText("Content")}><textarea rows={3} aria-label={uiText("Overlay text")} value={overlay.text} onFocus={begin} onChange={e => patch({text:e.target.value})} /></Field>
         <Field label={uiText("Typeface")}><input aria-label={uiText("Overlay font")} value={overlay.fontFamily} maxLength={200} onFocus={begin} onChange={event=>patch({fontFamily:event.target.value})} /></Field>
+        <button onClick={() => pickFile('.ttf,.otf,.woff,.woff2', async file => {
+          const current = useStore.getState().project;
+          try {
+            const font = await prepareProjectFont(file, overlay.fontFamily, overlay.fontWeight);
+            const fonts = [...(current.fonts ?? []).filter(f => f.family !== font.family || f.weight !== font.weight), font];
+            await loadProjectFonts({ fonts });
+            if (useStore.getState().project !== current) return;
+            useStore.getState().commit(); useStore.setState({ project: { ...current, fonts } });
+            toast(uiText('Font embedded in this project.'));
+          } catch (error) { toast(localizedDiagnostic(error)); }
+        })}>{uiText('Load font file')}</button><p className="hint">{uiText('Local fonts travel with saved projects. No system installation is needed.')}</p>
         <div className="inspector-grid">{num(uiText("Font size"),'fontSize',overlay.fontSize,1,2000,1,'px')}<Field label={uiText("Weight")}><SelectControl label={uiText("Overlay font weight")} value={String(overlay.fontWeight)} onGestureStart={begin} onChange={v=>patch({fontWeight:Number(v)})} options={[...new Set([overlay.fontWeight,400,500,600,700,800,900])].sort((a,b)=>a-b).map(v=>({value:String(v),label:v===400?uiText("Regular"):v===700?uiText("Bold"):String(v)}))} /></Field></div>
         <Field label={uiText("Alignment")}><ToggleGroup label={uiText("Overlay alignment")} value={overlay.align} options={[{value:'left',label:uiText("Left")},{value:'center',label:uiText("Center")},{value:'right',label:uiText("Right")}]} onChange={align=>action({align})} /></Field>
         <Field label={uiText("Text color")}><ColorControl label={uiText("Overlay color")} value={overlay.color} onGestureStart={begin} onChange={color=>patch({color})} /></Field>

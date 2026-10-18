@@ -7,8 +7,12 @@ import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 
-const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
+const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+let checkoutTag = '';
+try { checkoutTag = execFileSync('git', ['describe', '--tags', '--exact-match'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch {}
+const version = process.env.RELEASE_TAG || (/^[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?$/.test(checkoutTag) ? checkoutTag : pkg.version);
 const folder = path.resolve('.local', 'connector-smoke', version);
 mkdirSync(folder, { recursive: true });
 await build({ entryPoints: ['src/lib/editorTools.ts'], bundle: true, platform: 'node', format: 'cjs', outfile: path.join(folder, 'controller.cjs') });
@@ -29,7 +33,7 @@ for (const provider of ['codex', 'claude']) {
   try {
     await client.connect(transport);
     assert.equal(client.getServerVersion().version, version);
-    const tools = await client.listTools(); assert.equal(tools.tools.length, 12); report.discoveredTools = true;
+    const tools = await client.listTools(); assert.equal(tools.tools.length, 13); report.discoveredTools = true;
     const missing = await client.callTool({ name: 'get_project', arguments: {} }); assert.equal(missing.isError, true);
     const candidates = await Promise.all(Array.from({ length: 12 }, async (_, i) => {
       try { const response = await fetch(`http://127.0.0.1:${47831 + i}/health`, { signal: AbortSignal.timeout(1000) }); const value = await response.json(); return value.processId === transport.pid ? value : undefined; } catch { return undefined; }

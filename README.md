@@ -115,6 +115,37 @@ Agent access is optional and starts disabled. The browser connectors run on your
 
 ### Persistent browser MCP from a CLI session
 
+For a new machine, the repository can own the complete local browser editor and connect it autonomously through the visible Agent controls. It does not require desktop-agent tools or global client configuration. Clone this repository, use Node.js22+ and install the locked dependencies:
+
+```sh
+git clone https://github.com/iwatkot/cutwright.git
+cd cutwright
+npm ci
+node node_modules/playwright-core/cli.js install chromium
+npm run build:web
+node scripts/browser-editor.mjs start --port=5173 --mcp-port=47903 --cdp-port=9224
+node scripts/browser-agent-call.mjs --port=47903 tools
+node scripts/browser-agent-call.mjs --port=47903 get_project
+```
+
+Use a task-specific browser cache on shared machines: set `PLAYWRIGHT_BROWSERS_PATH` to an absolute directory such as `<checkout>/.local/browsers` before the install and start commands. The owner records the resolved browser executable; its later scheduled launch does not depend on the caller's environment. `--executable=<absolute browser path>` can select an existing compatible Chromium executable. No browser-cache cleanup or system-font installation is required.
+
+`browser-editor.mjs start` serves an immutable copy of the built browser files, starts the packaged stdio connector/CLI adapter, launches a persistent browser profile with native automatic downloads denied, pairs the intended tab through **Agent → Codex → Connect**, and verifies `get_project` and tool discovery. It never imports media, resets projects or starts an export. Windows ownership uses a separate on-demand Task Scheduler task under the current interactive user, with no recurring trigger or execution time limit; other systems use a detached owner. Health/status records actual process IDs, build/source identity, profile and endpoints in `.local/browser-editor/`. A stopped existing profile is copied before browser navigation to preserve media and abandoned export scratch.
+
+Use `--state=<absolute directory>` to keep separate sessions and `--profile=<absolute directory>` to choose their durable profile. Change all three ports when another session owns the defaults. `start` reuses its own healthy session and refuses occupied ports or an uncertain live owner. The owner keeps an immutable build snapshot, so source/build changes cannot swap lazy modules under an active export. Save all project/video artifacts before stopping or switching builds. No export is restarted during recovery.
+
+```sh
+node scripts/browser-editor.mjs status
+node scripts/browser-editor.mjs screenshot --output=<new.png>
+node scripts/browser-editor.mjs stop
+```
+
+Pass the same `--state` to each command when using a non-default state directory. Screenshots attach with `noDefaults:true`. Stop verifies the owned profile and refuses while an export is running; it preserves that profile and all saved files. For updates: save through MCP, stop this owner, pull/build, start with the same state/profile/origin, reconnect, read the fresh revision and open the saved project through MCP. Keep original media. The bootstrap requires working local browser launch and, on Windows, permission to create the user's on-demand task; it reports a precise setup failure rather than changing unrelated services or asking for account logins.
+
+Clip audio uses the existing `fadeIn`/`fadeOut` seconds and optional `fadeInCurve`/`fadeOutCurve` in -1..1 (zero is linear). Audio lengths retain the half-clip limit and split phase. Picture fades use separate `visualFadeIn`/`visualFadeOut` and `visualFadeInCurve`/`visualFadeOutCurve`, available through flat `setClipProps` fields, the Visual fades inspector and timeline handles. Picture fades work on video, images and editable titles; upper layers reveal lower layers and the base fades to black. A visual fade-out reaches zero on the last encoded clip frame. Fade every remaining visible ending layer, and end captions appropriately, when the final composition must be black. Native overlay source-animation fades remain independent.
+
+`import_font` accepts an absolute local `path`, a title's `family` and optional integer `weight` (default400). It embeds original TTF/OTF/WOFF/WOFF2 bytes in the editable project: up to1MiB per font and four fonts per project. The title inspector's **Load font file** uses the same validated import. Preview and browser/native SVG rendering consume those embedded bytes; saved/opened projects retain them across machines without global installation. Font bytes are part of the project returned by `get_project`; retain private project files accordingly. Discover the current schema rather than assuming a fixed tool count.
+
 For an already-running agent session that cannot register new MCP servers, use the repository's local MCP SDK client. It forwards advertised tools to the same packaged stdio connector; it never edits project storage directly. Node.js 22+ and the source dependencies are required.
 
 ```powershell

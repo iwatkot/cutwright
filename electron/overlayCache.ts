@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 
 export interface OverlayInput {
   overlay: Record<string, unknown>;
+  fonts?: { family: string; weight: number; dataUrl: string }[];
   width: number;
   height: number;
   fps: number;
@@ -70,7 +71,7 @@ export function createOverlayPreparation(ffmpegPath: string, cacheDir: string) {
             const ctx = canvas.getContext('2d');
             const pngs = [];
             for (let j = 0; j < ${count}; j++) {
-              const svg = CutWrightOverlay.overlaySvg(d.overlay, d.width, d.height, d.offset + (${i} + j) / d.fps * d.speed);
+              const svg = CutWrightOverlay.overlaySvg(d.overlay, d.width, d.height, d.offset + (${i} + j) / d.fps * d.speed, d.fonts);
               const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
               const url = URL.createObjectURL(blob);
               try {

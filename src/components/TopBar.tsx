@@ -13,6 +13,7 @@ import { ThemeControl } from './ui/theme';
 import ExportSettings from './ExportSettings';
 import type { ExportQuality } from '../lib/exportQuality';
 import BrandLogo from './BrandLogo';
+import { loadProjectFonts } from '../lib/projectFonts';
 import { projectDownloadBasename } from '../lib/projectFileName';
 
 export function toast(msg: string): void {
@@ -102,6 +103,7 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
   };
 
   const loadProject = async (next: Project, name: string, session: number) => {
+    await loadProjectFonts(next);
     const restored = window.cutwright
       ? { project: { ...next, media: next.media.map((m) => isBrowserMediaSource(m.src) ? { ...m, offline: true } : m) }, missing: [], errors: [] }
       : await restoreBrowserMedia(next);

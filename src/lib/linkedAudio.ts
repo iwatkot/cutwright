@@ -37,6 +37,7 @@ export function addLinkedAudio(project: Project, clipId: string, id: () => strin
     id: audioId, mediaId: video.mediaId, name: video.name, trackId: audioLane(project, video),
     start: video.start, duration: video.duration, offset: video.offset, color: video.color,
     speed: video.speed, volume: video.volume, fadeIn: video.fadeIn, fadeOut: video.fadeOut,
+    fadeInCurve: video.fadeInCurve, fadeOutCurve: video.fadeOutCurve,
     ...(video.audioEnvelope ? {audioEnvelope: {...video.audioEnvelope}} : {}), linkGroup: group,
   };
   // Preserve the previous audible mix when the picture lane has a gain or mute setting.

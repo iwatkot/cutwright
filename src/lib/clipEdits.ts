@@ -1,5 +1,6 @@
 import type { Clip, Project } from './types';
 import { resolveAudioEnvelope } from './audioEnv';
+import { resolveVisualEnvelope, visualLastFrame } from './clipFades';
 
 export function linkedClipIds(project: Project, clipId: string): Set<string> {
   const clip = project.clips.find((c) => c.id === clipId);
@@ -40,23 +41,31 @@ export function patchLinkedClips(project: Project, clipId: string, patch: Partia
   }
   const ids = linkedClipIds(project, clipId);
   const envelope = (c: Clip, next: Clip) => {
-    // A deliberate reset clears inherited phase for the whole linked pair.
-    if (Object.prototype.hasOwnProperty.call(patch, 'audioEnvelope')) {
-      next.audioEnvelope = patch.audioEnvelope ? { ...patch.audioEnvelope } : undefined;
-      return next;
-    }
-    if (c.audioEnvelope) {
+    for (const kind of ['audioEnvelope', 'visualEnvelope'] as const) {
+      const editable = kind === 'audioEnvelope' || c.id === clipId;
+      if (editable && Object.prototype.hasOwnProperty.call(patch, kind)) {
+        next[kind] = patch[kind] ? { ...patch[kind] } : undefined;
+        continue;
+      }
+      const inherited = c[kind];
+      if (!inherited) continue;
       const ratio = (c.speed ?? 1) / (next.speed ?? 1);
       const phase = (next.offset - c.offset) / (c.speed ?? 1);
       // Fade lengths are timeline seconds, just like unsplit clip fades.
       // Only the inherited source phase/lifetime follows a speed change.
-      const e = { ...c.audioEnvelope, offset: (c.audioEnvelope.offset + phase) * ratio, duration: c.audioEnvelope.duration * ratio };
+      const e = { ...inherited, offset: (inherited.offset + phase) * ratio, duration: inherited.duration * ratio };
       for (const key of ['fadeInStart', 'fadeInWindow', 'fadeOutEnd', 'fadeOutWindow'] as const) {
         if (e[key] !== undefined) e[key] *= ratio;
       }
-      if (patch.fadeIn !== undefined) { e.fadeIn = patch.fadeIn; e.fadeInStart = e.offset; e.fadeInWindow = next.duration; }
-      if (patch.fadeOut !== undefined) { e.fadeOut = patch.fadeOut; e.fadeOutEnd = e.offset + next.duration; e.fadeOutWindow = next.duration; }
-      next.audioEnvelope = e;
+      const fi = kind === 'audioEnvelope' ? patch.fadeIn : editable ? patch.visualFadeIn : undefined;
+      const fo = kind === 'audioEnvelope' ? patch.fadeOut : editable ? patch.visualFadeOut : undefined;
+      const ci = kind === 'audioEnvelope' ? patch.fadeInCurve : editable ? patch.visualFadeInCurve : undefined;
+      const co = kind === 'audioEnvelope' ? patch.fadeOutCurve : editable ? patch.visualFadeOutCurve : undefined;
+      if (fi !== undefined) { e.fadeIn = fi; e.fadeInStart = e.offset; e.fadeInWindow = next.duration; }
+      if (fo !== undefined) { e.fadeOut = fo; e.fadeOutEnd = e.offset + (kind === 'visualEnvelope' ? visualLastFrame(next, project.fps) : next.duration); e.fadeOutWindow = next.duration; }
+      if (ci !== undefined) e.fadeInCurve = ci;
+      if (co !== undefined) e.fadeOutCurve = co;
+      next[kind] = e;
     }
     return next;
   };
@@ -67,7 +76,7 @@ export function patchLinkedClips(project: Project, clipId: string, patch: Partia
     if (patch.start !== undefined) next.start = Math.max(0, c.start + patch.start - original.start);
     if (patch.duration !== undefined) next.duration = Math.max(.04, c.duration + patch.duration - original.duration);
     if (patch.offset !== undefined) next.offset = Math.max(0, c.offset + patch.offset - original.offset);
-    for (const key of ['speed', 'volume', 'fadeIn', 'fadeOut'] as const) if (patch[key] !== undefined) next[key] = patch[key];
+    for (const key of ['speed', 'volume', 'fadeIn', 'fadeOut', 'fadeInCurve', 'fadeOutCurve'] as const) if (patch[key] !== undefined) next[key] = patch[key];
     return envelope(c, next);
   }) };
 }
@@ -83,10 +92,12 @@ export function splitLinkedClips(project: Project, clipId: string, at: number, u
     if (c.id === clipId) rightId = id;
     count++;
     const e = c.audioEnvelope || c.fadeIn || c.fadeOut ? resolveAudioEnvelope(c) : undefined;
-    return [{ ...c, duration: at - c.start, ...(e ? { audioEnvelope: { ...e } } : {}) }, {
+    const v = c.visualEnvelope || c.visualFadeIn || c.visualFadeOut ? resolveVisualEnvelope(c, project.fps) : undefined;
+    return [{ ...c, duration: at - c.start, ...(e ? { audioEnvelope: { ...e } } : {}), ...(v ? { visualEnvelope: { ...v } } : {}) }, {
       ...c, id, name: c.name + ' (2)', start: at, duration: c.start + c.duration - at,
       offset: c.offset + (at - c.start) * (c.speed ?? 1), ...(c.linkGroup ? { linkGroup: rightGroup } : {}),
       ...(e ? { audioEnvelope: { ...e, offset: e.offset + at - c.start } } : {}),
+      ...(v ? { visualEnvelope: { ...v, offset: v.offset + at - c.start } } : {}),
     }];
   });
   return { project: { ...project, clips }, rightId, count };

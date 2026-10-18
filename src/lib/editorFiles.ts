@@ -3,9 +3,12 @@ import { browserMediaInfo } from './browserMediaInfo';
 import { projectDownloadBasename } from './projectFileName';
 import { validateProject } from './validate';
 import type { MediaItem, Project } from './types';
+import { loadProjectFonts, prepareProjectFont } from './projectFonts';
+import type { ProjectFont } from './types';
 
 export interface StagedEditorFile { name: string; url: string; token: string }
 export interface EditorFiles {
+  font?(file: StagedEditorFile, family: string, weight: number): Promise<ProjectFont>;
   download?(url: string, destination: { url: string; token: string }): Promise<{ outputPath: string; bytes: number }>;
   import(files: StagedEditorFile[]): Promise<MediaItem[]>;
   open(file: StagedEditorFile): Promise<{ project: Project; missing: string[] }>;
@@ -35,6 +38,7 @@ async function stagedBlob(file: StagedEditorFile): Promise<Blob> {
 
 const downloads = new Map<string, string>();
 export const browserEditorFiles: EditorFiles = {
+  async font(file, family, weight) { const blob = await stagedBlob(file); return prepareProjectFont(new File([blob], file.name), family, weight); },
   async download(url, destination) {
     if (!url.startsWith(`blob:${location.origin}/`)) throw new Error('Expected a local browser download.');
     const target = new URL(destination.url);
@@ -53,6 +57,7 @@ export const browserEditorFiles: EditorFiles = {
   async open(file) {
     const validation = validateProject(JSON.parse(await (await stagedBlob(file)).text()));
     if (!validation.ok || !validation.project) throw new Error(validation.errors.join('; '));
+    await loadProjectFonts(validation.project);
     return restoreBrowserMedia(validation.project);
   },
   async save(project) {
