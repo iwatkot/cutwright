@@ -1,7 +1,8 @@
 import { exportDimensions } from './outputDimensions';
 import type { Clip, Project, TransitionDef } from './types';
 import { resolveOverlay } from './overlay';
-import { resolveAudioEnvelope, clampFade } from './audioEnv';
+import { resolveAudioEnvelope } from './audioEnv';
+import { envelopeExpression, resolveVisualEnvelope } from './clipFades';
 
 export interface ExportPlan {
   args: string[];
@@ -100,7 +101,7 @@ export function buildExportArgs(project: Project, defs: TransitionDef[], srtPath
       // The desktop resolves this descriptor into a cached alpha video using
       // the same SVG renderer as preview, sampled on the clip's source clock.
       inputs.push('-t', seconds(clip.duration), '-i', 'cutwright-overlay:' + JSON.stringify({
-        overlay, width: W, height: H, fps, duration: clip.duration,
+        overlay, fonts: project.fonts, width: W, height: H, fps, duration: clip.duration,
         offset: clip.offset, speed: clip.speed ?? 1,
       }));
       return idx;
@@ -131,6 +132,16 @@ export function buildExportArgs(project: Project, defs: TransitionDef[], srtPath
   // content is scaled about the frame center, translated by posX/posY
   // percent of the frame, rotated about the center — always re-fitted onto
   // the fixed WxH canvas (pad with transparency/black, never crop the canvas).
+  const applyVisualFade = (label: string, clip: Clip, alpha: boolean): string => {
+    const envelope = resolveVisualEnvelope(clip, fps);
+    if (!envelope.fadeIn && !envelope.fadeOut) return label;
+    const gain = envelopeExpression(envelope, 'T', 1), out = next('vfaded');
+    const expr = alpha
+      ? `lum='lum(X,Y)':cb='cb(X,Y)':cr='cr(X,Y)':a='alpha(X,Y)*${gain}'`
+      : `lum='16+(lum(X,Y)-16)*${gain}':cb='128+(cb(X,Y)-128)*${gain}':cr='128+(cr(X,Y)-128)*${gain}'`;
+    filters.push(`[${label}]${alpha ? 'format=yuva444p,' : ''}geq=${expr}[${out}]`);
+    return out;
+  };
   const lookFx = (clip: Clip, overlay = false): string => {
     const parts: string[] = [];
     const b = clip.brightness ?? 1, c = clip.contrast ?? 1, s = clip.saturation ?? 1;
@@ -202,7 +213,7 @@ export function buildExportArgs(project: Project, defs: TransitionDef[], srtPath
     filters.push(`color=c=black:s=${W}x${H}:r=${fps}:d=${f3((frames + 1) / fps)},format=rgba,trim=end_frame=${frames},setpts=PTS-STARTPTS,settb=AVTB[${canvas}]`);
     filters.push(`[${canvas}][${raw}]overlay=x=0:y=0:eof_action=pass:shortest=1:format=rgb,${rgbToYuv(false)},settb=AVTB[${out}]`);
     void label;
-    return applyClipEntrance(out, clip, false);
+    return applyVisualFade(applyClipEntrance(out, clip, false), clip, false);
   };
 
   /**
@@ -380,6 +391,7 @@ export function buildExportArgs(project: Project, defs: TransitionDef[], srtPath
     // the base (blur is applied on the base-track path; overlay alpha fade
     // is the faithful equivalent over already-composited content).
     ovLabel = applyClipEntrance(ovLabel, clip, true);
+    ovLabel = applyVisualFade(ovLabel, clip, true);
     const ready = next('ovready');
     filters.push(`[${ovLabel}]format=yuva420p[${ready}]`);
     trackParts.push({ label: ready, dur: frames / fps, endClip: clip });
@@ -419,17 +431,12 @@ export function buildExportArgs(project: Project, defs: TransitionDef[], srtPath
     chain += `,volume=${f3(gain)}`;
     // Fade lengths clamp to duration/2 — the same rule the preview envelope
     // uses (src/lib/audioEnv.ts), so both ramps start and end together.
-    if (clip.audioEnvelope) {
+    if (clip.audioEnvelope || clip.fadeInCurve || clip.fadeOutCurve) {
       const envelope = resolveAudioEnvelope(clip);
-      const fi = clampFade(envelope.fadeIn, envelope.fadeInWindow ?? envelope.duration);
-      const fo = clampFade(envelope.fadeOut, envelope.fadeOutWindow ?? envelope.duration);
-      const clock = `(t+${seconds(envelope.offset)})`;
-      const attack = fi > 0 ? `min(1,max(0,(${clock}-(${seconds(envelope.fadeInStart ?? 0)}))/${seconds(fi)}))` : '1';
-      const release = fo > 0 ? `min(1,max(0,(${seconds(envelope.fadeOutEnd ?? envelope.duration)}-${clock})/${seconds(fo)}))` : '1';
       // t is the post-tempo clip clock. A split crops the inherited profile
       // rather than restarting its ramps; val(ch), c=same keeps every input
       // channel independent without an unintended stereo/mono downmix.
-      chain += `,aeval=exprs='val(ch)*min(${attack},${release})':c=same`;
+      chain += `,aeval=exprs='val(ch)*${envelopeExpression(envelope, 't')}':c=same`;
     } else {
       if (clip.fadeIn) chain += `,afade=t=in:st=0:d=${f3(Math.min(clip.fadeIn, clip.duration / 2))}`;
       if (clip.fadeOut) {

@@ -14,6 +14,9 @@ export interface ClipPropsPatch {
   posX?: number; posY?: number; rotate?: number;
   brightness?: number; contrast?: number; saturation?: number;
   fadeIn?: number; fadeOut?: number; offset?: number;
+  fadeInCurve?: number; fadeOutCurve?: number;
+  visualFadeIn?: number; visualFadeOut?: number;
+  visualFadeInCurve?: number; visualFadeOutCurve?: number;
 }
 
 export type AgentOp =
@@ -59,7 +62,9 @@ const PROP_RANGES: Record<keyof ClipPropsPatch, [number, number]> = {
   volume: [0, 4], speed: [0.1, 8], opacity: [0, 1], scale: [0.1, 3],
   posX: [-50, 50], posY: [-50, 50], rotate: [-180, 180],
   brightness: [0, 2], contrast: [0, 2], saturation: [0, 3],
-  fadeIn: [0, 30], fadeOut: [0, 30], offset: [0, 24 * 3600],
+  fadeIn: [0, 86400], fadeOut: [0, 86400], offset: [0, 24 * 3600],
+  fadeInCurve: [-1, 1], fadeOutCurve: [-1, 1],
+  visualFadeIn: [0, 86400], visualFadeOut: [0, 86400], visualFadeInCurve: [-1, 1], visualFadeOutCurve: [-1, 1],
 };
 
 function parseProps(o: Record<string, unknown>): { props: ClipPropsPatch; bad: string[] } {

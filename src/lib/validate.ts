@@ -1,4 +1,5 @@
 import type { Project } from './types';
+import { validProjectFonts } from './projectFonts';
 import { validateOverlay } from './overlay';
 
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -32,6 +33,7 @@ export function validateProject(raw: unknown): { ok: boolean; project?: Project;
   const p = raw as Partial<Project> & Record<string, unknown>;
   if (p.version !== 1) errors.push(`Unsupported project version: ${String(p.version)} (expected 1)`);
   if (typeof p.name !== 'string' || !p.name) errors.push('Missing project name');
+  if (p.fonts !== undefined && !validProjectFonts(p.fonts)) errors.push('Invalid embedded project fonts.');
   if (!between(p.width, 2, 16384) || !Number.isInteger(p.width) || !between(p.height, 2, 16384) || !Number.isInteger(p.height) || !between(p.fps, 1, 240)) errors.push('Invalid width, height or fps (dimensions 2..16384, fps 1..240)');
   for (const key of ['media', 'clips', 'transitions', 'subtitles', 'customTransitions'] as const) {
     if (!Array.isArray(p[key])) { errors.push(`Missing or invalid "${key}" list`); continue; }
@@ -74,7 +76,7 @@ export function validateProject(raw: unknown): { ok: boolean; project?: Project;
     if (clip.volume !== undefined && (!isFin(clip.volume) || clip.volume < 0 || clip.volume > 4)) errors.push(`Clip "${String(clip.name)}" has invalid volume (0..4)`);
     if (clip.speed !== undefined && (!isFin(clip.speed) || clip.speed < 0.1 || clip.speed > 8)) errors.push(`Clip "${String(clip.name)}" has invalid speed (0.1..8)`);
     if (clip.opacity !== undefined && (!isFin(clip.opacity) || clip.opacity < 0 || clip.opacity > 1)) errors.push(`Clip "${String(clip.name)}" has invalid opacity (0..1)`);
-    const ranges = { scale: [0.1, 3], posX: [-50, 50], posY: [-50, 50], rotate: [-180, 180], brightness: [0, 2], contrast: [0, 2], saturation: [0, 3], fadeIn: [0, 86400], fadeOut: [0, 86400] };
+    const ranges = { scale: [0.1, 3], posX: [-50, 50], posY: [-50, 50], rotate: [-180, 180], brightness: [0, 2], contrast: [0, 2], saturation: [0, 3], fadeIn: [0, 86400], fadeOut: [0, 86400], fadeInCurve: [-1, 1], fadeOutCurve: [-1, 1], visualFadeIn: [0, 86400], visualFadeOut: [0, 86400], visualFadeInCurve: [-1, 1], visualFadeOutCurve: [-1, 1] };
     for (const key of Object.keys(ranges) as (keyof typeof ranges)[]) {
       const value = clip[key];
       const [min, max] = ranges[key];
@@ -82,10 +84,13 @@ export function validateProject(raw: unknown): { ok: boolean; project?: Project;
     }
     if (clip.mutedAudio !== undefined && typeof clip.mutedAudio !== 'boolean') errors.push(`Clip "${String(clip.name)}" has invalid mutedAudio flag`);
     if (clip.linkGroup !== undefined && clip.linkGroup !== null && !isId(clip.linkGroup)) errors.push(`Clip "${String(clip.name)}" has invalid linked group`);
-    if (clip.audioEnvelope !== undefined && (!isObj(clip.audioEnvelope) || !between(clip.audioEnvelope.offset, -86400, 86400) || !between(clip.audioEnvelope.duration, .001, 86400) || !between(clip.audioEnvelope.fadeIn, 0, 86400) || !between(clip.audioEnvelope.fadeOut, 0, 86400))) errors.push(`Clip "${String(clip.name)}" has invalid inherited audio envelope`);
-    if (isObj(clip.audioEnvelope)) {
-      for (const key of ['fadeInStart', 'fadeOutEnd'] as const) if (clip.audioEnvelope[key] !== undefined && !between(clip.audioEnvelope[key], -86400, 86400)) errors.push(`Clip "${String(clip.name)}" has invalid audio envelope ${key}`);
-      for (const key of ['fadeInWindow', 'fadeOutWindow'] as const) if (clip.audioEnvelope[key] !== undefined && !between(clip.audioEnvelope[key], .001, 86400)) errors.push(`Clip "${String(clip.name)}" has invalid audio envelope ${key}`);
+    for (const kind of ['audioEnvelope', 'visualEnvelope'] as const) {
+      const e = clip[kind];
+      if (e === undefined) continue;
+      if (!isObj(e) || !between(e.offset, -86400, 86400) || !between(e.duration, .001, 86400) || !between(e.fadeIn, 0, 86400) || !between(e.fadeOut, 0, 86400)) { errors.push(`Clip "${String(clip.name)}" has invalid ${kind}`); continue; }
+      for (const key of ['fadeInStart', 'fadeOutEnd'] as const) if (e[key] !== undefined && !between(e[key], -86400, 86400)) errors.push(`Clip "${String(clip.name)}" has invalid ${kind} ${key}`);
+      for (const key of ['fadeInWindow', 'fadeOutWindow'] as const) if (e[key] !== undefined && !between(e[key], .001, 86400)) errors.push(`Clip "${String(clip.name)}" has invalid ${kind} ${key}`);
+      for (const key of ['fadeInCurve', 'fadeOutCurve'] as const) if (e[key] !== undefined && !between(e[key], -1, 1)) errors.push(`Clip "${String(clip.name)}" has invalid ${kind} ${key}`);
     }
   }
   for (const t of transitions) {

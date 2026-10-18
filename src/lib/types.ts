@@ -26,6 +26,9 @@ export interface TitleOverlay extends OverlayAnimation {
   fontSize: number;
   fontWeight: number;
   color: string;
+  /** Optional contrast stroke in project pixels; zero preserves plain text. */
+  outlineWidth?: number;
+  outlineColor?: string;
   x: number; y: number;
   blockWidth: number;
   lineHeight: number;
@@ -54,6 +57,13 @@ export interface MediaItem {
   overlay?: NativeOverlay;
 }
 
+export interface ClipFadeEnvelope {
+  offset: number; duration: number; fadeIn: number; fadeOut: number;
+  fadeInCurve?: number; fadeOutCurve?: number;
+  fadeInStart?: number; fadeInWindow?: number;
+  fadeOutEnd?: number; fadeOutWindow?: number;
+}
+
 export interface Clip {
   id: string;
   mediaId: string;
@@ -73,18 +83,22 @@ export interface Clip {
   linkGroup?: string | null; // null explicitly unlinks and survives older-project migration
   /** A split crops an existing fade envelope rather than restarting it.
    * Times are in the clip's timeline-rate seconds, including inherited phase. */
-  audioEnvelope?: {
-    offset: number; duration: number; fadeIn: number; fadeOut: number;
-    /** Explicit edge edits on an inherited envelope affect only that edge. */
-    fadeInStart?: number; fadeInWindow?: number;
-    fadeOutEnd?: number; fadeOutWindow?: number;
-  };
+  audioEnvelope?: ClipFadeEnvelope;
+  visualEnvelope?: ClipFadeEnvelope;
   /** Native, editable content. PNG media remains a portable thumbnail/fallback. */
   overlay?: NativeOverlay;
   /** Import provenance, retained for older project files and conversion audits. */
   generatedOverlay?: { kind: 'arrow' | 'title'; text?: string; preset?: string };
   fadeIn?: number; // seconds
   fadeOut?: number; // seconds
+  /** Audio curve: -1 slower rise, 0 linear, +1 faster rise. */
+  fadeInCurve?: number;
+  fadeOutCurve?: number;
+  /** Picture fades are independent of sound and overlay source animation. */
+  visualFadeIn?: number;
+  visualFadeOut?: number;
+  visualFadeInCurve?: number;
+  visualFadeOutCurve?: number;
   scale?: number; // 0.1..3 (default 1)
   posX?: number; // percent of frame width, -50..50 (default 0)
   posY?: number; // percent of frame height, -50..50 (default 0)
@@ -139,12 +153,16 @@ export interface TransitionDef {
   collection: string;
 }
 
+export interface ProjectFont { family: string; weight: number; dataUrl: string }
+
 export interface Project {
   version: 1;
   name: string;
   width: number;
   height: number;
   fps: number;
+  /** Local font bytes travel with the editable project; no system installation. */
+  fonts?: ProjectFont[];
   media: MediaItem[];
   clips: Clip[];
   transitions: AppliedTransition[];

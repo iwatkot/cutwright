@@ -33,7 +33,8 @@ const envelopeData = (clip: Clip) => {
   const e = resolveAudioEnvelope(clip);
   return { 'data-envelope-offset': e.offset, 'data-envelope-duration': e.duration, 'data-envelope-fadein': e.fadeIn, 'data-envelope-fadeout': e.fadeOut,
     'data-envelope-fadein-start': e.fadeInStart, 'data-envelope-fadein-window': e.fadeInWindow,
-    'data-envelope-fadeout-end': e.fadeOutEnd, 'data-envelope-fadeout-window': e.fadeOutWindow };
+    'data-envelope-fadeout-end': e.fadeOutEnd, 'data-envelope-fadeout-window': e.fadeOutWindow,
+    'data-envelope-fadein-curve': e.fadeInCurve, 'data-envelope-fadeout-curve': e.fadeOutCurve };
 };
 
 // Preview gain path: HTMLMediaElement.volume caps at 1, the inspector allows
@@ -364,6 +365,7 @@ export default function Preview() {
         fadeInWindow: el.dataset.envelopeFadeinWindow === undefined ? undefined : Number(el.dataset.envelopeFadeinWindow),
         fadeOutEnd: el.dataset.envelopeFadeoutEnd === undefined ? undefined : Number(el.dataset.envelopeFadeoutEnd),
         fadeOutWindow: el.dataset.envelopeFadeoutWindow === undefined ? undefined : Number(el.dataset.envelopeFadeoutWindow),
+        fadeInCurve: Number(el.dataset.envelopeFadeinCurve ?? 0), fadeOutCurve: Number(el.dataset.envelopeFadeoutCurve ?? 0),
       }, local);
       el.dataset.gainNow = total.toFixed(3); // measured-parity hook (tests read the applied gain)
       const gain = routedGain(el);
@@ -408,7 +410,7 @@ export default function Preview() {
           <div data-cw-overlay={overlay.kind} data-overlay-source-time={sourceTime}
             aria-label={overlay.kind === 'title' ? overlay.text : clip.name}
             style={{ position: 'absolute', inset: 0, ...fx }}
-            dangerouslySetInnerHTML={{ __html: overlaySvg(overlay, project.width, project.height, sourceTime) }} />
+            dangerouslySetInnerHTML={{ __html: overlaySvg(overlay, project.width, project.height, sourceTime, project.fonts) }} />
         ) : source && media?.kind === 'video' ? (
           <video crossOrigin="anonymous" {...common} src={source} playsInline style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', ...fx }} />
         ) : source && media?.kind === 'image' ? (

@@ -20,10 +20,13 @@ import { startAgentConnections } from './lib/agentConnection';
 import { sweepBrowserExportScratch } from './lib/browserExportStorage';
 import { useStore } from './lib/store';
 import { startBrowserArtwork } from './lib/browserArtwork';
+import { loadProjectFonts } from './lib/projectFonts';
 import { fmtTime } from './lib/srt';
 import { readBrowserRecovery, restoreBrowserMedia, writeBrowserRecovery, type BrowserRecovery } from './lib/browserMedia';
 
 export default function App() {
+  const fonts = useStore(s => s.project.fonts);
+  useEffect(() => { void loadProjectFonts({ fonts }).catch(error => toast(localizedDiagnostic(error))); }, [fonts]);
   useEffect(() => window.cutwright ? undefined : startBrowserArtwork(), []);
   const compact = useCompactLayout();
   const [mobilePanel, setMobilePanel] = useState<'library' | 'properties' | null>(null);

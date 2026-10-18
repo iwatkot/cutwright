@@ -1,4 +1,6 @@
 import type { Clip, MediaItem, NativeOverlay, TitleOverlay } from './types';
+import type { ProjectFont } from './types';
+import { projectFontStyles } from './projectFonts';
 
 const clamp = (n: number) => Math.min(1, Math.max(0, n));
 const finite = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -25,6 +27,8 @@ export function validateOverlay(raw: unknown): string[] {
     if (typeof raw.text !== 'string' || raw.text.length > 100000) errors.push('Overlay text must be a string of at most 100000 characters');
     if (typeof raw.fontFamily !== 'string' || !raw.fontFamily.trim() || raw.fontFamily.length > 200) errors.push('Overlay fontFamily must name a font');
     number('fontSize', 1, 2000); number('fontWeight', 100, 1000);
+    number('outlineWidth', 0, 50, true);
+    if (raw.outlineColor !== undefined && (typeof raw.outlineColor !== 'string' || !/^#[0-9a-f]{6}(?:[0-9a-f]{2})?$/i.test(raw.outlineColor))) errors.push('Overlay color must be #RRGGBB or #RRGGBBAA');
     number('x', -100000, 100000); number('y', -100000, 100000);
     number('blockWidth', 0, 100000); number('lineHeight', 1, 10000);
     if (!['left', 'center', 'right'].includes(String(raw.align))) errors.push('Overlay alignment must be left, center or right');
@@ -69,7 +73,7 @@ export function overlayFrame(overlay: NativeOverlay, sourceTime: number) {
 
 /** Safe standalone SVG. Preview and the desktop alpha-video cache both call
  * this renderer; it never executes imported HTML, scripts or font URLs. */
-export function overlaySvg(overlay: NativeOverlay, width: number, height: number, sourceTime: number): string {
+export function overlaySvg(overlay: NativeOverlay, width: number, height: number, sourceTime: number, fonts?: ProjectFont[]): string {
   const frame = overlayFrame(overlay, sourceTime);
   let content = '';
   if (overlay.kind === 'arrow') {
@@ -90,9 +94,10 @@ export function overlaySvg(overlay: NativeOverlay, width: number, height: number
     const anchor = overlay.align === 'left' ? 'start' : overlay.align === 'right' ? 'end' : 'middle';
     const x = overlay.x + (overlay.align === 'left' ? 0 : overlay.align === 'right' ? overlay.blockWidth : overlay.blockWidth / 2);
     const lines = overlay.text.replace(/\r\n?/g, '\n').split('\n');
-    content = `<g transform="translate(0 ${n(frame.scrollY)})" fill="${xml(overlay.color)}" font-family="${xml(overlay.fontFamily)}, Arial, sans-serif" font-size="${n(overlay.fontSize)}" font-weight="${n(overlay.fontWeight)}" text-anchor="${anchor}">`;
+    const outline = overlay.outlineWidth ? ` stroke="${xml(overlay.outlineColor ?? '#000000')}" stroke-width="${n(overlay.outlineWidth)}" stroke-linejoin="round" paint-order="stroke fill"` : '';
+    content = `<g transform="translate(0 ${n(frame.scrollY)})" fill="${xml(overlay.color)}" font-family="${xml(overlay.fontFamily)}, Arial, sans-serif" font-size="${n(overlay.fontSize)}" font-weight="${n(overlay.fontWeight)}" text-anchor="${anchor}"${outline}>`;
     content += lines.map((line, i) => `<text x="${n(x)}" y="${n(overlay.y + i * overlay.lineHeight)}" dominant-baseline="text-before-edge" xml:space="preserve">${xml(line)}</text>`).join('');
     content += '</g>';
   }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="width:100%;height:100%;display:block"><g opacity="${n(frame.opacity)}">${content}</g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="width:100%;height:100%;display:block">${overlay.kind === 'title' ? projectFontStyles(fonts, overlay.fontFamily) : ''}<g opacity="${n(frame.opacity)}">${content}</g></svg>`;
 }

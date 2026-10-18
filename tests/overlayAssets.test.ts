@@ -17,6 +17,13 @@ beforeEach(() => {
 afterEach(() => { setLocale('en'); vi.unstubAllGlobals(); });
 
 describe('reusable native overlay assets', () => {
+  it('retains contrast styling in saved assets and scales its project-pixel width with typography', () => {
+    const styled = { ...credits, outlineWidth: 3, outlineColor: '#142332' };
+    expect(saveOverlayAsset('Outlined credits', styled, canvas)).toBe(true);
+    const saved = loadOverlayAssets()[0];
+    expect(saved.overlay).toEqual(styled);
+    expect(scaleOverlay(saved.overlay, canvas, { width: 960, height: 540 })).toMatchObject({ outlineWidth: 1.5, outlineColor: '#142332' });
+  });
   it('names new unnamed assets in the current language without renaming saved or authored names', () => {
     setLocale('de');
     expect(saveOverlayAsset('', arrow, canvas)).toBe(true);

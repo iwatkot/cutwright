@@ -1,4 +1,5 @@
 import { overlaySvg, resolveOverlay } from './overlay';
+import { clipVisualGain } from './clipFades';
 import { drawCaption } from './captions';
 import { type PreviewLayer, type PreviewTrack } from './previewComposition';
 import type { AppliedTransition, Clip, Project, TransitionDef } from './types';
@@ -292,6 +293,7 @@ export function createBrowserCompositor(options: BrowserCompositorOptions) {
         plainVideo = media?.kind === 'video' && sourceWidth === W && sourceHeight === H && !resolveOverlay(clip, media)
           && (clip.scale ?? 1) === 1 && (clip.posX ?? 0) === 0 && (clip.posY ?? 0) === 0 && (clip.rotate ?? 0) === 0
           && (clip.brightness ?? 1) === 1 && (clip.contrast ?? 1) === 1 && (clip.saturation ?? 1) === 1 && (clip.opacity ?? 1) === 1
+          && clipVisualGain(clip, local, project.fps) === 1
           && (!entry || local >= Math.min(entry.applied.duration, clip.duration))
           && !project.subtitles.some((s) => time >= s.start && time <= s.end);
       }
@@ -301,7 +303,7 @@ export function createBrowserCompositor(options: BrowserCompositorOptions) {
         clear(contexts[2], W, H, track.base);
         for (let index = 0; index < track.layers.length; index++) {
           const layer = track.layers[index], clip = layer.clip, media = mediaById.get(clip.mediaId), overlay = resolveOverlay(clip, media);
-          const source = overlay ? await native(overlaySvg(overlay, W, H, layer.sourceTime)) : sources.get(clip.id);
+          const source = overlay ? await native(overlaySvg(overlay, W, H, layer.sourceTime, project.fonts)) : sources.get(clip.id);
           if (!source) throw new Error(`Missing decoded frame for ${clip.name} (${clip.id}) at ${layer.sourceTime.toFixed(6)}s`);
           const dst = contexts[index];
           // Fit first, then transform/filter the full composition canvas, so
@@ -319,6 +321,13 @@ export function createBrowserCompositor(options: BrowserCompositorOptions) {
           const local = Math.max(0, Math.min(clip.duration, (layer.sourceTime - clip.offset) / (clip.speed ?? 1)));
           if (entry && local < Math.min(entry.applied.duration, clip.duration)) {
             applyEntrance(dst, contexts[2], surfaces[index], entry, local, clip, track.base, W, H);
+          }
+          const fade = clipVisualGain(clip, local, project.fps);
+          if (fade < 1) {
+            // Include entrance fills; base fades to black, other layers reveal below.
+            dst.save(); dst.resetTransform(); dst.filter = 'none'; dst.globalAlpha = 1 - fade;
+            dst.globalCompositeOperation = track.base ? 'source-over' : 'destination-out';
+            dst.fillStyle = '#000000'; dst.fillRect(0, 0, W, H); dst.restore();
           }
         }
         if (track.transition && track.layers.length === 2) {

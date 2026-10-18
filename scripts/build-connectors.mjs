@@ -5,7 +5,10 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 
-const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
+const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+let checkoutTag = '';
+try { checkoutTag = execFileSync('git', ['describe', '--tags', '--exact-match'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch {}
+const version = process.env.RELEASE_TAG || (/^[0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?$/.test(checkoutTag) ? checkoutTag : pkg.version);
 const output = path.resolve('public', 'connectors', version);
 const extension = path.resolve('.local', 'connector-build', version, 'claude');
 mkdirSync(path.join(extension, 'server'), { recursive: true });

@@ -57,6 +57,7 @@ export function scaleOverlay(overlay: NativeOverlay, source: OverlayCanvas, targ
   } else {
     next.x = fit(next.x * scale + padX, -100000, 100000); next.y = fit(next.y * scale + padY, -100000, 100000);
     next.fontSize = fit(next.fontSize * scale, 1, 2000);
+    if (next.outlineWidth !== undefined) next.outlineWidth = fit(next.outlineWidth * scale, 0, 50);
     next.lineHeight = fit(next.lineHeight * scale, 1, 10000);
     next.blockWidth = fit(next.blockWidth * scale, 0, 100000);
     if (next.scroll) { next.scroll.fromY *= scale; next.scroll.toY *= scale; }

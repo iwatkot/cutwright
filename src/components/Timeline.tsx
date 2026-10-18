@@ -7,6 +7,7 @@ import { FloatingSurface, type SurfaceAnchor } from './ui/FloatingSurface';
 import TrackHeader from './TrackHeader';
 import { useStore } from '../lib/store';
 import OverlayInspector from './OverlayInspector';
+import ClipFadeHandles, { ClipFadeFields } from './ClipFades';
 import { Field, NumberControl, RangeControl, InspectorSection } from './ui/Controls';
 import { snapTimelineTime } from '../lib/canvasGeometry';
 import TimelineMarkers from './TimelineMarkers';
@@ -83,7 +84,7 @@ export default function Timeline() {
     const media = project.media.find((item) => item.id === clip.mediaId);
     const overlay = resolveOverlay(clip, media);
     const source = overlay
-      ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(overlaySvg(overlay, project.width, project.height, overlayPreviewTime(overlay, project)))}`
+      ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(overlaySvg(overlay, project.width, project.height, overlayPreviewTime(overlay, project), project.fonts))}`
       : !media || media.offline ? '' : thumbnailUrl(media.thumb ?? '') || (media.kind === 'image' ? thumbnailUrl(media.src) : '');
     return [clip.id, source];
   })), [project]);
@@ -407,6 +408,7 @@ export default function Timeline() {
               </span>
             ) : null}
             <span className="edge r" onPointerDown={(e) => startClipDrag(e, c.id, 'r')} />
+            <ClipFadeHandles clip={c} visual={isVideo} fps={project.fps} />
           </div>
         ))}
         {project.transitions.filter((tr) => tr.anchorClipId ? clips.some((c) => c.id === tr.anchorClipId) : kind === displayTracks.videos[displayTracks.videos.length - 1]).map((tr) => {
@@ -454,7 +456,8 @@ export function SelectionInspector({ onClose }: { onClose?: () => void } = {}) {
     <div className="selection-header"><strong>{clip.name}</strong><small>{uiText("Track")}{" "}{clip.trackId.toUpperCase()}{clip.linkGroup?uiText(" · Linked audio/video"):''}</small><IconButton label={uiText("Close clip properties")} onClick={()=>onClose ? onClose() : st.selectClip(null)}><IconClose /></IconButton></div>
     {overlay&&<OverlayInspector clip={clip} />}
     <InspectorSection title={uiText("Timing")}><div className="property-grid">{num(uiText("Start"),clip.start,{},'start',0,86400,.1,'s')}{num(uiText("Length"),clip.duration,{},'duration',.2,86400,.1,'s')}{num(uiText("Speed"),clip.speed??1,{},'speed',.1,8,.05,'×')}{num(uiText("Source in"),clip.offset,{},'offset',0,86400,.1,'s')}</div></InspectorSection>
-    {!overlay && (!visual || media?.kind === 'video' && media.hasAudio !== false && (!clip.mutedAudio || !!clip.linkGroup)) && <InspectorSection title={uiText("Audio")} defaultOpen={!visual}><div className="property-grid">{num(uiText("Volume"),audible.volume??1,{},'volume',0,4,.05,'×')}{num(uiText("Fade in"),audible.fadeIn??0,{},'fadeIn',0,86400,.1,'s')}{num(uiText("Fade out"),audible.fadeOut??0,{},'fadeOut',0,86400,.1,'s')}</div>{audible.audioEnvelope&&<p className="hint">{uiText("Fades retain their phase across split clips.")}</p>}<button onClick={()=>st.updateClip(clip.id,{volume:1,fadeIn:0,fadeOut:0,audioEnvelope:undefined})}>{uiText("Reset audio")}</button></InspectorSection>}
+    {visual && <InspectorSection title={uiText('Visual fades')} defaultOpen={false}><ClipFadeFields clip={clip} visual />{clip.visualEnvelope && <p className="hint">{uiText('Fades retain their phase across split clips.')}</p>}</InspectorSection>}
+    {!overlay && (!visual || media?.kind === 'video' && media.hasAudio !== false && (!clip.mutedAudio || !!clip.linkGroup)) && <InspectorSection title={uiText("Audio")} defaultOpen={!visual}><div className="property-grid">{num(uiText("Volume"),audible.volume??1,{},'volume',0,4,.05,'×')}</div><ClipFadeFields clip={audible} visual={false} />{audible.audioEnvelope&&<p className="hint">{uiText("Fades retain their phase across split clips.")}</p>}<button onClick={()=>st.updateClip(clip.id,{volume:1,fadeIn:0,fadeOut:0,fadeInCurve:0,fadeOutCurve:0,audioEnvelope:undefined})}>{uiText("Reset audio")}</button></InspectorSection>}
     {visual&&<InspectorSection title={uiText("Transform")} defaultOpen={!overlay}><div className="property-grid">{num(uiText("Scale"),clip.scale??1,{},'scale',.1,3,.05,'×')}{num(uiText("Opacity"),clip.opacity??1,{},'opacity',0,1,.05)}<Field label={uiText("Horizontal offset")}><NumberControl label={uiText("Horizontal offset")} value={(clip.posX??0)*project.width/100} min={-project.width/2} max={project.width/2} unit="px" onGestureStart={begin} onChange={v=>change(()=>st.updateClip(clip.id,{posX:v/project.width*100},false))}/></Field><Field label={uiText("Vertical offset")}><NumberControl label={uiText("Vertical offset")} value={(clip.posY??0)*project.height/100} min={-project.height/2} max={project.height/2} unit="px" onGestureStart={begin} onChange={v=>change(()=>st.updateClip(clip.id,{posY:v/project.height*100},false))}/></Field>{num(uiText("Rotation"),clip.rotate??0,{},'rotate',-180,180,1,'°')}</div><button onClick={()=>st.updateClip(clip.id,{scale:1,opacity:1,posX:0,posY:0,rotate:0})}>{uiText("Reset transform")}</button></InspectorSection>}
     {visual&&<InspectorSection title={uiText("Color")} defaultOpen={false}><div className="property-grid">{num(uiText("Brightness"),clip.brightness??1,{},'brightness',0,2,.05)}{num(uiText("Contrast"),clip.contrast??1,{},'contrast',0,2,.05)}{num(uiText("Saturation"),clip.saturation??1,{},'saturation',0,3,.05)}</div><button onClick={()=>st.updateClip(clip.id,{brightness:1,contrast:1,saturation:1})}>{uiText("Reset color")}</button></InspectorSection>}
     <div className="selection-actions">{canDetachAudio(project,clip.id)&&<IconButton label={uiText("Detach audio")} onClick={()=>st.detachAudio(clip.id)}><IconUnlink /></IconButton>}<IconButton label={uiText("Split selected clip")} action="split" onClick={split}><IconSplit /></IconButton><IconButton label={uiText("Delete selected clip")} action="delete" onClick={()=>st.rippleEnabled?st.deleteSelectedRipple():st.deleteSelected()}><IconDelete /></IconButton></div>

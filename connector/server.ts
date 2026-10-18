@@ -145,17 +145,19 @@ export async function createConnectorServer(options: { client: ConnectorClient; 
       const key = randomUUID(), token = randomBytes(32).toString('hex'); destinations.set(key, { path, token });
       return { target: { url: `http://127.0.0.1:${port}/downloads/${key}`, token }, release() { destinations.delete(key); } };
     },
-    async stageFiles(paths: unknown, projectFile = false) {
+    async stageFiles(paths: unknown, projectFile: boolean | 'font' = false) {
       if (!pair) throw new Error('Connect the intended browser tab first.');
       if (!Array.isArray(paths) || !paths.length || paths.length > 20) throw new Error('Provide 1 to 20 absolute file paths.');
       const entries: { id: string; name: string; path: string; token: string; size: number; mime: string }[] = [];
       const mimes: Record<string, string> = { '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.webm': 'video/webm', '.m4v': 'video/mp4', '.m4a': 'audio/mp4', '.mp3': 'audio/mpeg', '.aac': 'audio/aac', '.wav': 'audio/wav', '.ogg': 'audio/ogg', '.flac': 'audio/flac', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.bmp': 'image/bmp', '.json': 'application/json' };
+      Object.assign(mimes, { '.ttf': 'font/ttf', '.otf': 'font/otf', '.woff': 'font/woff', '.woff2': 'font/woff2' });
       for (const path of paths) {
         if (typeof path !== 'string' || !isAbsolute(path)) throw new Error('Expected an absolute local file path.');
         const extension = extname(path).toLowerCase();
-        if (projectFile ? extension !== '.json' : !mimes[extension] || extension === '.json') throw new Error('Unsupported local file type.');
+        const isFont = mimes[extension]?.startsWith('font/');
+        if (projectFile === 'font' ? !isFont : projectFile ? extension !== '.json' : !mimes[extension] || extension === '.json' || isFont) throw new Error('Unsupported local file type.');
         const info = await stat(path);
-        if (!info.isFile() || !info.size || info.size > (projectFile ? 4 * 1024 * 1024 : 32 * 1024 * 1024 * 1024)) throw new Error('Expected a nonempty local file within the supported size limit.');
+        if (!info.isFile() || !info.size || info.size > (projectFile === 'font' ? 1024 * 1024 : projectFile ? 8 * 1024 * 1024 : 32 * 1024 * 1024 * 1024)) throw new Error('Expected a nonempty local file within the supported size limit.');
         entries.push({ id: randomUUID(), name: basename(path), path, token: randomBytes(32).toString('hex'), size: info.size, mime: mimes[extension] });
       }
       for (const entry of entries) staged.set(entry.id, entry);

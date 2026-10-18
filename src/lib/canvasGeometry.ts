@@ -131,6 +131,7 @@ export function resizeProject(project: Project, width: number, height: number): 
       ...item,
       x: coordinate(item.x, ratioX), y: coordinate(item.y, ratioY),
       fontSize: clamp(item.fontSize * ratio, 1, 2000),
+      ...(item.outlineWidth !== undefined ? { outlineWidth: clamp(item.outlineWidth * ratio, 0, 50) } : {}),
       blockWidth: clamp(item.blockWidth * ratioX, 0, 100000),
       lineHeight: clamp(item.lineHeight * ratio, 1, 10000),
       ...(item.scroll ? { scroll: { ...item.scroll, fromY: item.scroll.fromY * ratioY, toY: item.scroll.toY * ratioY } } : {}),

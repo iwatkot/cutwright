@@ -29,9 +29,9 @@ async function main() {
         staged = await bridge.stageFiles(args.paths);
         const { paths: _paths, ...rest } = args; args = { ...rest, files: staged.files };
       }
-      if (request.params.name === 'open_project') {
+      if (request.params.name === 'open_project' || request.params.name === 'import_font') {
         if (typeof args.path !== 'string' || args.file !== undefined) throw new Error('Provide an absolute project path; file is reserved for the connector.');
-        staged = await bridge.stageFiles([args.path], true);
+        staged = await bridge.stageFiles([args.path], request.params.name === 'import_font' ? 'font' : true);
         const { path: _path, ...rest } = args; args = { ...rest, file: staged.files[0] };
       }
       if (request.params.name === 'save_download') {

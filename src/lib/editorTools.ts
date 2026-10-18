@@ -6,6 +6,7 @@ import { validateProject } from './validate';
 import type { Project } from './types';
 import type { EditorFiles, StagedEditorFile } from './editorFiles';
 import type { ExportQuality } from './exportQuality';
+import { loadProjectFonts } from './projectFonts';
 
 export type EditorExportPreset = 'source' | '1080' | '720' | '480';
 export interface EditorExportJobSnapshot {
@@ -109,6 +110,17 @@ export function createEditorToolController(options: EditorToolOptions = {}) {
     try {
       if (name === 'get_project') return { ok: true, revision: revision(), project: clone(semanticProject(store.getState().project)), definitions: clone(store.getState().allDefs()), canUndo: status().canUndo, canRedo: status().canRedo, history: status().history };
       if (name === 'seek_preview') { store.getState().setPlaying(false); store.getState().setPlayhead(args.time as number); return { ok: true, revision: revision(), time: store.getState().playhead }; }
+      if (name === 'import_font') {
+        if (!options.files?.font || !args.file) return failure('FILES_UNAVAILABLE', 'Absolute paths require the browser stdio connector.');
+        const font = await options.files.font(args.file as StagedEditorFile, args.family as string, args.weight === undefined ? 400 : args.weight as number);
+        if (!enabled || disposed || revision() !== before) return failure('STALE_REVISION', 'The project changed during font import.');
+        const current = store.getState(), fonts = [...(current.project.fonts ?? []).filter(f => f.family !== font.family || f.weight !== font.weight), font];
+        if (fonts.length > 4) return failure('INVALID_ARGUMENTS', 'A project supports up to four embedded fonts.');
+        const project = { ...current.project, fonts }; await loadProjectFonts(project);
+        if (revision() !== before) return failure('STALE_REVISION', 'The project changed during font import.');
+        store.setState({ project, past: [...current.past.slice(-40), clone(current.project)], future: [] });
+        record(name, before, 'Embedded local font.'); return { ok: true, revision: revision(), family: font.family, weight: font.weight, embedded: true };
+      }
       if (name === 'save_download') {
         if (!options.files?.download || !args.destination) return failure('FILES_UNAVAILABLE', 'Absolute paths require the browser stdio connector.');
         const result = await options.files.download(args.downloadUrl as string, args.destination as { url: string; token: string });

@@ -21,7 +21,7 @@ afterEach(() => { controllers.splice(0).forEach((c) => c.dispose()); vi.unstubAl
 describe('agent assembly and local files', () => {
   it('creates silent picture, separate narration and independently editable rolling layers in one undo step', async () => {
     const c = controller(), before = structuredClone(useStore.getState().project);
-    const overlay = { kind: 'title', text: 'Heading\nNames', fontFamily: 'Arial', fontSize: 36, fontWeight: 900, color: '#FFFFFF', x: 20, y: 30, blockWidth: 600, lineHeight: 44, align: 'center', scroll: { fromY: 360, toY: -100, duration: 8 } };
+    const overlay = { kind: 'title', text: 'Heading\nNames', fontFamily: 'Arial', fontSize: 36, fontWeight: 900, color: '#FFFFFF', outlineWidth: 3, outlineColor: '#142332', x: 20, y: 30, blockWidth: 600, lineHeight: 44, align: 'center', scroll: { fromY: 360, toY: -100, duration: 8 } };
     const result = await c.execute('apply_edits', { expectedRevision: c.status.revision, ops: [
       { type: 'setProjectInfo', name: 'Assembly', fps: 30 },
       { type: 'addTrack', trackId: 'a2' },
@@ -208,7 +208,7 @@ describe('external editor tool controller', () => {
   it('defaults to disabled and permanently rejects saved handles after disposal', async () => {
     const c = controller({ enabled: false }); expect(c.listTools()).toEqual([]);
     expect(await c.execute('get_project', {})).toMatchObject({ error: { code: 'DISABLED' } });
-    c.setEnabled(true); expect(c.listTools()).toHaveLength(12);
+    c.setEnabled(true); expect(c.listTools()).toHaveLength(13);
     const definitions = c.listTools(); definitions[0].name = 'modified'; expect(c.listTools()[0].name).toBe('get_project');
     c.dispose(); c.setEnabled(true); expect(c.enabled).toBe(false); expect(c.listTools()).toEqual([]);
     expect(await c.execute('get_project', {})).toMatchObject({ error: { code: 'DISPOSED' } });
