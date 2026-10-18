@@ -48,6 +48,7 @@ export interface MediaItem {
   height?: number;
   hasAudio?: boolean; // from metadata probe; false = silent video (export must not map its audio)
   thumb?: string; // file:// URL or data URL of a generated thumbnail
+  filmstrip?: { time: number; url: string }[]; // derived source-time samples, never export media
   peaks?: number[]; // normalized audio waveform peaks (0..1)
   offline?: boolean; // derived local availability; checked when the media panel opens
   overlay?: NativeOverlay;

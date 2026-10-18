@@ -28,7 +28,7 @@ export function toast(msg: string): void {
 // Thumbnail/waveform caches and current file availability are derived data,
 // so preparing previews after Open must not look like an unsaved edit.
 function projectFingerprint(project: Project): string {
-  return JSON.stringify({ ...project, media: project.media.map((m) => ({ ...m, thumb: undefined, peaks: undefined, offline: undefined })) });
+  return JSON.stringify({ ...project, media: project.media.map((m) => ({ ...m, thumb: undefined, filmstrip: undefined, peaks: undefined, offline: undefined })) });
 }
 
 export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => void }) {

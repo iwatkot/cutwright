@@ -69,7 +69,7 @@ function schemaErrors(value: unknown, schema: Schema, path = 'arguments'): strin
 
 /** Derived media availability/preview caches never invalidate an agent's edit. */
 export function semanticProject(project: Project): Project {
-  return { ...project, media: project.media.map(({ thumb: _thumb, peaks: _peaks, offline: _offline, ...media }) => media) };
+  return { ...project, media: project.media.map(({ thumb: _thumb, filmstrip: _filmstrip, peaks: _peaks, offline: _offline, ...media }) => media) };
 }
 function canonical(value: unknown): string {
   if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';

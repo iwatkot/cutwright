@@ -23,6 +23,7 @@ import { toast } from './TopBar';
 import { mediaUrl } from '../lib/mediaUrl';
 import { overlaySvg, resolveOverlay } from '../lib/overlay';
 import { overlayPreviewTime } from '../lib/overlayAssets';
+import { filmstripFrames } from '../lib/browserArtwork';
 import { IconButton, IconPlus, IconAudioPlus, IconCaptions, IconClose, IconDelete, IconDots, IconPlay, IconRedo, IconRipple, IconSnap, IconSplit, IconTrackHeight, IconUndo, IconVideoPlus, IconZoomIn, IconZoomOut } from './icons';
 function thumbnailUrl(source: string): string {
   // A saved desktop path grants no browser file access, even when a legacy
@@ -385,7 +386,13 @@ export default function Timeline() {
             role="button" tabIndex={0} aria-label={uiText("{0}, {1}, {2} seconds", { 0: c.name, 1: fmtTime(c.start), 2: c.duration.toFixed(1) }) + (c.linkGroup ? uiText(" · Linked audio/video") : '')} onKeyDown={e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();selectClip(c.id);setPlayhead(c.start);}}} onPointerDown={(e) => startClipDrag(e, c.id, 'move')}>
             <span className="edge l" onPointerDown={(e) => startClipDrag(e, c.id, 'l')} />
             <span className="clipname">{c.linkGroup && <IconConnection />}{c.name} · {c.duration.toFixed(1)}{uiText("s")}</span>
-            {isVideo && thumbnails.get(c.id) && <span className="filmstrip" style={{ backgroundImage: `url(${JSON.stringify(thumbnails.get(c.id))})` }} />}
+            {isVideo && (() => {
+              const media = project.media.find(m => m.id === c.mediaId);
+              const clipWidth = Math.max(30, c.duration * pxPerSec);
+              const frames = media && !media.offline ? filmstripFrames(media, c, clipWidth / (rowH * (media.width || 16) / (media.height || 9))) : [];
+              return frames.length ? <span className="filmstrip sampled-filmstrip">{frames.map((source, i) => <img key={i} alt="" src={thumbnailUrl(source)} style={{ width: clipWidth / frames.length }} />)}</span>
+                : thumbnails.get(c.id) && <span className="filmstrip" style={{ backgroundImage: `url(${JSON.stringify(thumbnails.get(c.id))})` }} />;
+            })()}
             {(!isVideo || !c.mutedAudio) && project.media.find((m) => m.id === c.mediaId)?.peaks?.length ? (
               <span className="wave" aria-hidden>
                 {(() => {
