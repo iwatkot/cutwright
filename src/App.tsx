@@ -79,11 +79,18 @@ export default function App() {
   const [recovery, setRecovery] = useState<{ project: Project; at: number } | null>(null);
   const [restoring, setRestoring] = useState(false);
   const loadedRef = useRef(false);
+  const recoveryDocument = useRef(0);
+  useEffect(() => {
+    const documentLoaded = () => { recoveryDocument.current++; setRecovery(null); };
+    window.addEventListener('cw-project-loaded', documentLoaded);
+    return () => window.removeEventListener('cw-project-loaded', documentLoaded);
+  }, []);
 
   // Initial project (desktop test hook / CLI) + autosave recovery offer.
   useEffect(() => {
     if (loadedRef.current) return;
     loadedRef.current = true;
+    const initialRecoveryDocument = recoveryDocument.current;
     void (async () => {
       if (window.cutwright?.initialProject) {
         try {
@@ -105,7 +112,7 @@ export default function App() {
         } catch (error) { toast(uiText("Local recovery could not be read: {0}", { 0: localizedDiagnostic(error) })); }
       }
       const current = useStore.getState().project;
-      if (parsed && JSON.stringify(parsed.project) !== JSON.stringify(current)) setRecovery(parsed);
+      if (initialRecoveryDocument === recoveryDocument.current && parsed && JSON.stringify(parsed.project) !== JSON.stringify(current)) setRecovery(parsed);
     })();
   }, []);
 
