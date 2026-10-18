@@ -38,6 +38,7 @@ describe('browser ↔ local MCP connector', () => {
     const bridge = await server();
     await expect(bridge.stageFiles(['relative.mp4'])).rejects.toThrow();
     await pair(bridge.port);
+    mkdirSync(path.resolve('.local'), { recursive: true });
     const folder = mkdtempSync(path.resolve('.local', 'staged-files-'));
     const file = path.join(folder, 'original.mp4'), bytes = Buffer.alloc(5 * 1024 * 1024, 37);
     writeFileSync(file, bytes);
