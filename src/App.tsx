@@ -19,10 +19,12 @@ import { cycleTheme } from './components/ui/theme';
 import { startAgentConnections } from './lib/agentConnection';
 import { sweepBrowserExportScratch } from './lib/browserExportStorage';
 import { useStore } from './lib/store';
+import { startBrowserArtwork } from './lib/browserArtwork';
 import { fmtTime } from './lib/srt';
 import { readBrowserRecovery, restoreBrowserMedia, writeBrowserRecovery, type BrowserRecovery } from './lib/browserMedia';
 
 export default function App() {
+  useEffect(() => window.cutwright ? undefined : startBrowserArtwork(), []);
   const compact = useCompactLayout();
   const [mobilePanel, setMobilePanel] = useState<'library' | 'properties' | null>(null);
   const [panelAnchor, setPanelAnchor] = useState<SurfaceAnchor>({ x: 8, y: 80 });

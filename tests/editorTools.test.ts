@@ -130,10 +130,10 @@ describe('external editor tool controller', () => {
 
   it('ignores derived media caches and playhead updates while exposing an immutable semantic snapshot', async () => {
     const c = controller(), revision = c.status.revision;
-    useStore.setState((state) => ({ playhead: 5, project: { ...state.project, media: state.project.media.map((m) => ({ ...m, thumb: 'new', peaks: [.1, .8], offline: false })) } }));
+    useStore.setState((state) => ({ playhead: 5, project: { ...state.project, media: state.project.media.map((m) => ({ ...m, thumb: 'new', filmstrip: [{time: 1, url: 'data:image/jpeg;base64,AA'}], peaks: [.1, .8], offline: false })) } }));
     expect(c.status.revision).toBe(revision);
     const result = await c.execute('get_project', {}), project = result.project as Project;
-    expect(project.media[0]).not.toHaveProperty('thumb'); expect(project.media[0]).not.toHaveProperty('peaks'); expect(project.media[0]).not.toHaveProperty('offline');
+    expect(project.media[0]).not.toHaveProperty('thumb'); expect(project.media[0]).not.toHaveProperty('filmstrip'); expect(project.media[0]).not.toHaveProperty('peaks'); expect(project.media[0]).not.toHaveProperty('offline');
     expect(result).not.toHaveProperty('settings'); expect(result).not.toHaveProperty('chat');
     project.clips[0].name = 'Changed externally'; expect(useStore.getState().project.clips[0].name).toBe('One');
     useStore.setState((state) => ({ project: { ...state.project, media: state.project.media.map((m) => ({ ...m, src: 'relinked/source.mp4' })) } }));
