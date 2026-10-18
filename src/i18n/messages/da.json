@@ -602,6 +602,8 @@
   "Origin is not allowed.": "Denne oprindelse er ikke tilladt.",
   "Origin X": "Udgangspunkt X",
   "Origin Y": "Udgangspunkt Y",
+  "Outline color": "Konturfarve",
+  "Outline width": "Konturbredde",
   "Output directory is unavailable.": "Outputmappen er ikke tilgængelig.",
   "Overlapping clips on {0}: {1} and {2}": "Overlappende klip på {0}: {1} og {2}",
   "Overlay {0}": "Lag: {0}",

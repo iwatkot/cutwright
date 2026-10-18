@@ -602,6 +602,8 @@
   "Origin is not allowed.": "Tento původ není povolen.",
   "Origin X": "Počátek X",
   "Origin Y": "Počátek Y",
+  "Outline color": "Barva obrysu",
+  "Outline width": "Šířka obrysu",
   "Output directory is unavailable.": "Výstupní složka není dostupná.",
   "Overlapping clips on {0}: {1} and {2}": "Překrývající se klipy na {0}: {1} a {2}",
   "Overlay {0}": "Vrstva: {0}",

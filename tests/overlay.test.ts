@@ -6,6 +6,16 @@ const arrow: ArrowOverlay = { kind: 'arrow', x1: 100, y1: 200, x2: 600, y2: 300,
 const title: TitleOverlay = { kind: 'title', text: 'Thanks\nFirst supporter\nLast supporter', fontFamily: 'Cygre Black', fontSize: 40, fontWeight: 400, color: '#FFFFFF', x: 10, y: 100, blockWidth: 500, lineHeight: 50, align: 'center', scroll: { fromY: 1080, toY: -250, duration: 8 } };
 
 describe('native overlay rendering', () => {
+  it('adds a bounded optional outline behind title fill without moving glyphs or changing plain titles', () => {
+    const styled = { ...title, outlineWidth: 3, outlineColor: '#142332' };
+    expect(validateOverlay(styled)).toEqual([]);
+    const svg = overlaySvg(styled, 1920, 1080, 2);
+    expect(svg).toContain('stroke="#142332" stroke-width="3" stroke-linejoin="round" paint-order="stroke fill"');
+    expect(svg.match(/<text[^>]+>/g)).toEqual(overlaySvg(title, 1920, 1080, 2).match(/<text[^>]+>/g));
+    expect(overlaySvg(title, 1920, 1080, 2)).not.toContain('stroke-width');
+    expect(overlaySvg({ ...title, outlineWidth: 0 }, 1920, 1080, 2)).toBe(overlaySvg(title, 1920, 1080, 2));
+    expect(validateOverlay({ ...styled, outlineWidth: 51, outlineColor: 'url(https://example.test)' })).toHaveLength(2);
+  });
   it('preserves signed animation phase and draws shaft before the arrowhead', () => {
     expect(overlayFrame(arrow, 0)).toMatchObject({ opacity: 0, drawProgress: 0 });
     expect(overlayFrame(arrow, 0.415).drawProgress).toBeCloseTo(0.5);

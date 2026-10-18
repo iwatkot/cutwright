@@ -21,7 +21,7 @@ afterEach(() => { controllers.splice(0).forEach((c) => c.dispose()); vi.unstubAl
 describe('agent assembly and local files', () => {
   it('creates silent picture, separate narration and independently editable rolling layers in one undo step', async () => {
     const c = controller(), before = structuredClone(useStore.getState().project);
-    const overlay = { kind: 'title', text: 'Heading\nNames', fontFamily: 'Arial', fontSize: 36, fontWeight: 900, color: '#FFFFFF', x: 20, y: 30, blockWidth: 600, lineHeight: 44, align: 'center', scroll: { fromY: 360, toY: -100, duration: 8 } };
+    const overlay = { kind: 'title', text: 'Heading\nNames', fontFamily: 'Arial', fontSize: 36, fontWeight: 900, color: '#FFFFFF', outlineWidth: 3, outlineColor: '#142332', x: 20, y: 30, blockWidth: 600, lineHeight: 44, align: 'center', scroll: { fromY: 360, toY: -100, duration: 8 } };
     const result = await c.execute('apply_edits', { expectedRevision: c.status.revision, ops: [
       { type: 'setProjectInfo', name: 'Assembly', fps: 30 },
       { type: 'addTrack', trackId: 'a2' },

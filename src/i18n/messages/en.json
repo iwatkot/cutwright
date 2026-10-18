@@ -602,6 +602,8 @@
   "Origin is not allowed.": "Origin is not allowed.",
   "Origin X": "Origin X",
   "Origin Y": "Origin Y",
+  "Outline color": "Outline color",
+  "Outline width": "Outline width",
   "Output directory is unavailable.": "Output directory is unavailable.",
   "Overlapping clips on {0}: {1} and {2}": "Overlapping clips on {0}: {1} and {2}",
   "Overlay {0}": "Overlay {0}",

@@ -602,6 +602,8 @@
   "Origin is not allowed.": "Cette origine n’est pas autorisée.",
   "Origin X": "Origine X",
   "Origin Y": "Origine Y",
+  "Outline color": "Couleur du contour",
+  "Outline width": "Épaisseur du contour",
   "Output directory is unavailable.": "Le dossier de sortie est indisponible.",
   "Overlapping clips on {0}: {1} and {2}": "Plans qui se chevauchent sur {0} : {1} et {2}",
   "Overlay {0}": "Calque : {0}",

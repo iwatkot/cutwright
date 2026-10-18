@@ -602,6 +602,8 @@
   "Origin is not allowed.": "Ovo poreklo nije dozvoljeno.",
   "Origin X": "Koordinatni početak X",
   "Origin Y": "Koordinatni početak Y",
+  "Outline color": "Boja obruba",
+  "Outline width": "Širina obruba",
   "Output directory is unavailable.": "Izlazna fascikla nije dostupna.",
   "Overlapping clips on {0}: {1} and {2}": "Preklapanje isečaka na {0}: {1} i {2}",
   "Overlay {0}": "Sloj: {0}",

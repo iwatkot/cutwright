@@ -26,6 +26,9 @@ export interface TitleOverlay extends OverlayAnimation {
   fontSize: number;
   fontWeight: number;
   color: string;
+  /** Optional contrast stroke in project pixels; zero preserves plain text. */
+  outlineWidth?: number;
+  outlineColor?: string;
   x: number; y: number;
   blockWidth: number;
   lineHeight: number;

@@ -602,6 +602,8 @@
   "Origin is not allowed.": "Deze herkomst is niet toegestaan.",
   "Origin X": "Oorsprong X",
   "Origin Y": "Oorsprong Y",
+  "Outline color": "Omtrekkleur",
+  "Outline width": "Omtrekbreedte",
   "Output directory is unavailable.": "De uitvoermap is niet beschikbaar.",
   "Overlapping clips on {0}: {1} and {2}": "Overlappende clips op {0}: {1} en {2}",
   "Overlay {0}": "Laag: {0}",

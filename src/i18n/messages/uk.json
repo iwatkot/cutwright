@@ -602,6 +602,8 @@
   "Origin is not allowed.": "Це джерело не дозволено.",
   "Origin X": "Початок X",
   "Origin Y": "Початок Y",
+  "Outline color": "Колір обведення",
+  "Outline width": "Товщина обведення",
   "Output directory is unavailable.": "Папка виведення недоступна.",
   "Overlapping clips on {0}: {1} and {2}": "Кліпи, що перекриваються на {0}: {1} і {2}",
   "Overlay {0}": "Шар: {0}",

@@ -146,6 +146,8 @@ Clip audio uses the existing `fadeIn`/`fadeOut` seconds and optional `fadeInCurv
 
 `import_font` accepts an absolute local `path`, a title's `family` and optional integer `weight` (default400). It embeds original TTF/OTF/WOFF/WOFF2 bytes in the editable project: up to1MiB per font and four fonts per project. The title inspector's **Load font file** uses the same validated import. Preview and browser/native SVG rendering consume those embedded bytes; saved/opened projects retain them across machines without global installation. Font bytes are part of the project returned by `get_project`; retain private project files accordingly. Discover the current schema rather than assuming a fixed tool count.
 
+Editable titles optionally accept `outlineWidth` (0..50 project pixels, default0/off) and `outlineColor` (`#RRGGBB` or `#RRGGBBAA`, default black) in their complete `addOverlay`/`setOverlay` content. The Text inspector exposes the same width and contextual color control. The shared preview/browser/native SVG renderer paints a rounded stroke behind the unchanged glyph fill, positions and roll. Use a restrained dark outline to retain light credits over light footage; it travels with saved projects/assets and scales with typography when resizing.
+
 For an already-running agent session that cannot register new MCP servers, use the repository's local MCP SDK client. It forwards advertised tools to the same packaged stdio connector; it never edits project storage directly. Node.js 22+ and the source dependencies are required.
 
 ```powershell
