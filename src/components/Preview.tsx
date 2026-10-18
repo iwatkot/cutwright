@@ -8,7 +8,7 @@ import { BUILTIN_TRANSITIONS } from '../lib/transitions';
 import { mediaUrl } from '../lib/mediaUrl';
 import { audioEnvelopeGain, resolveAudioEnvelope } from '../lib/audioEnv';
 import { overlaySvg, resolveOverlay } from '../lib/overlay';
-import { resolvePreviewComposition, transitionPreviewStyles, type PreviewLayer } from '../lib/previewComposition';
+import { resolvePreviewComposition, transitionPreviewStyles, smearPreview, type PreviewLayer } from '../lib/previewComposition';
 import { captionLayout, captionSvg } from '../lib/captions';
 import { IconButton, IconFit, IconHand, IconPause, IconPlay, IconSkipEnd, IconSkipStart, IconStepBack, IconStepFwd, IconZoomIn, IconZoomOut } from './icons';
 import { useShortcutLabel } from '../lib/shortcutPreferences';
@@ -120,7 +120,11 @@ export default function Preview() {
     return () => cancelAnimationFrame(raf);
   }, [previewDef]);
 
-  const demo = previewDef ? transitionPreviewStyles(previewDef, pp, pixelScale) : null;
+  const demo = previewDef ? transitionPreviewStyles(previewDef, pp, pixelScale, Math.min(project.width, project.height), project.width) : null;
+  const smears = [...new Map([
+    ...(previewDef?.xfade === 'hblur' ? [smearPreview(pp, project.width, pixelScale)] : []),
+    ...composition.flatMap(track => track.transition?.def.xfade === 'hblur' ? [smearPreview(track.transition.progress, project.width, pixelScale)] : []),
+  ].map(filter => [filter.id, filter])).values()];
   const demoStyle = (isNext: boolean): CSSProperties => (isNext ? demo?.incoming : demo?.outgoing) ?? {};
 
   // A transition handle can become frozen without replacing its video node.
@@ -437,6 +441,7 @@ export default function Preview() {
       <div ref={navigation.viewportRef} className={`previewwrap cw-canvas-workspace${navigation.spaceHeld || navigation.handTool ? ' cw-preview-hand' : ''}${navigation.panning ? ' cw-preview-panning' : ''}`} role="region" aria-label={uiText("Video preview")} tabIndex={0} data-preview-zoom={navigation.view.zoom} data-preview-pan-x={navigation.view.x} data-preview-pan-y={navigation.view.y} onPointerDownCapture={navigation.pointerDown} onClickCapture={event => { if (navigation.suppressClick.current) { event.preventDefault(); event.stopPropagation(); } }} onContextMenu={event => event.preventDefault()} onMouseDownCapture={event => { if (event.button === 1 || event.button === 2) event.preventDefault(); }} onMouseDown={() => { const ae = document.activeElement as HTMLElement | null; if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) ae.blur(); }}>
         <div className="canvas-frame" style={{ width: navigation.area.fitWidth * navigation.view.zoom, height: navigation.area.fitHeight * navigation.view.zoom, transform: `translate(${navigation.view.x}px, ${navigation.view.y}px)`, aspectRatio: `${project.width}/${project.height}` }}>
         <div className="stage" ref={stageRef} style={{ isolation: 'isolate', aspectRatio: `${project.width} / ${project.height}` }} onClick={() => { if (previewDef) useStore.getState().setPreviewDef(null); }}>
+          {!!smears.length && <svg aria-hidden="true" width="0" height="0" style={{ position: 'absolute', pointerEvents: 'none' }}><defs>{smears.map(filter => <filter key={filter.id} id={filter.id} x="-100%" y="-100%" width="300%" height="300%" colorInterpolationFilters="sRGB"><feGaussianBlur stdDeviation={`${filter.sigma} 0`} /><feOffset dx={filter.offset} /></filter>)}</defs></svg>}
           {previewDef && (
             <>
               <div className="scene" style={{ background: 'linear-gradient(135deg,#155e75,#0b0c0e 72%)', ...demoStyle(false) }}>

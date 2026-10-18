@@ -1,7 +1,7 @@
 import type { TransitionDef } from './types';
 import { normalizeTransitionDescription } from './transitionLanguage';
 
-/** Built-in transitions. `xfade` values are real FFmpeg xfade names. */
+/** `gaussian` is our uniform focus/crossfade; other xfade values retain FFmpeg semantics. */
 export const BUILTIN_TRANSITIONS: TransitionDef[] = [
   { id: 'cut', name: 'Cut (none)', description: 'Hard cut, no blend', xfade: 'fade', preview: 'dissolve', duration: 0, collection: 'Essentials' },
   { id: 'cross-dissolve', name: 'Cross Dissolve', description: 'Classic soft blend between shots', xfade: 'fade', preview: 'dissolve', duration: 0.6, collection: 'Essentials' },
@@ -13,7 +13,8 @@ export const BUILTIN_TRANSITIONS: TransitionDef[] = [
   { id: 'smooth-zoom', name: 'Smooth Zoom', description: 'Punch-in zoom blend (preview approx.)', xfade: 'smoothleft', preview: 'zoom', duration: 0.6, collection: 'Movement' },
   { id: 'circle-open', name: 'Circle Open', description: 'Iris opens on the next shot', xfade: 'circleopen', preview: 'wipe', duration: 0.7, collection: 'Stylized' },
   { id: 'pixelize', name: 'Pixelize', description: 'Blocky digital breakdown', xfade: 'pixelize', preview: 'dissolve', duration: 0.6, collection: 'Stylized' },
-  { id: 'blur-inout', name: 'Blur In/Out', description: 'Movavi BlurInOut — horizontal blur blend between shots', xfade: 'hblur', preview: 'blur', duration: 2.0, collection: 'Stylized' },
+  { id: 'blur-inout', name: 'Directional Smear', description: 'Horizontal forward smear blend between shots', xfade: 'hblur', preview: 'blur', duration: 2.0, collection: 'Stylized' },
+  { id: 'gaussian-defocus', name: 'Camera Defocus', description: 'Uniform Gaussian defocus and refocus between shots', xfade: 'gaussian', preview: 'defocus', duration: 1, collection: 'Stylized' },
 ];
 
 const XFADES = ['fade', 'fadeblack', 'fadewhite', 'fadegrays', 'slideleft', 'slideright', 'slideup', 'slidedown', 'wipeleft', 'wiperight', 'wipeup', 'wipedown', 'circleopen', 'circleclose', 'pixelize', 'smoothleft', 'smoothright', 'dissolve', 'radial', 'hblur'];
@@ -32,7 +33,8 @@ export function synthesizeTransition(request: string): TransitionDef {
   else if (/zoom|punch/.test(r)) { xfade = 'smoothleft'; preview = 'zoom'; }
   else if (/circle|iris/.test(r)) { xfade = /close/.test(r) ? 'circleclose' : 'circleopen'; preview = 'wipe'; }
   else if (/pixel/.test(r)) { xfade = 'pixelize'; preview = 'dissolve'; }
-  else if (/blur/.test(r)) { xfade = 'hblur'; preview = 'blur'; }
+  else if (/hblur|smear|directional|horizontal.*blur/.test(r)) { xfade = 'hblur'; preview = 'blur'; }
+  else if (/blur|gauss|defocus|focus/.test(r)) { xfade = 'gaussian'; preview = 'defocus'; }
   else if (/dissolve|cross/.test(r)) { xfade = 'fade'; preview = 'dissolve'; }
 
   const explicit = r.trim().match(/^([a-z]+)(?:\s+\d+(?:\.\d+)?\s*(?:s|sec|seconds|ms))?$/)?.[1];

@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { AppliedTransition, Clip, Project, TransitionDef } from './types';
 import { clipVisualGain, visualLastFrame } from './clipFades';
+import { defocusSigma } from './defocus';
 
 export interface PreviewLayer {
   clip: Clip;
@@ -17,13 +18,21 @@ export interface PreviewTrack {
   transition?: { applied: AppliedTransition; def: TransitionDef; progress: number };
 }
 const clamp = (n: number) => Math.min(1, Math.max(0, n));
+/** The legacy xfade samples forward horizontally. Its preview uses a
+ * horizontal kernel shifted to that same side, rather than a camera blur. */
+export function smearPreview(progress: number, width: number, pixelScale: number) {
+  const spread = Math.max(0, Math.trunc(1 + Math.floor(width / 2) * (1 - Math.abs(2 * clamp(progress) - 1))) - 1) * pixelScale;
+  return { id: `cw-smear-${Math.round(spread * 100)}`, sigma: spread / Math.sqrt(12), offset: -spread / 2 };
+}
 
 /** Styles for an isolated track. Additive weighted layers preserve alpha
  * during a dissolve; ordinary source-over would dim opaque footage at 50%. */
-export function transitionPreviewStyles(def: TransitionDef, progress: number, pixelScale = 1): { outgoing: CSSProperties; incoming: CSSProperties; fill?: PreviewTrack['fill'] } {
+export function transitionPreviewStyles(def: TransitionDef, progress: number, pixelScale = 1, minDimension = 1080, width = 1920): { outgoing: CSSProperties; incoming: CSSProperties; fill?: PreviewTrack['fill'] } {
   const p = clamp(progress);
   const additive: CSSProperties = { mixBlendMode: 'plus-lighter' };
   const blend = { outgoing: { ...additive, opacity: 1 - p }, incoming: { ...additive, opacity: p } };
+  if (def.xfade === 'hblur') { const filter = `url(#${smearPreview(p, width, pixelScale).id})`; return { outgoing: { ...blend.outgoing, filter }, incoming: { ...blend.incoming, filter } }; }
+  if (def.xfade === 'gaussian') { const filter = `blur(${defocusSigma(p, minDimension, minDimension) * pixelScale}px)`; return { outgoing: { ...blend.outgoing, filter }, incoming: { ...blend.incoming, filter } }; }
   if (def.xfade === 'fadeblack' || def.xfade === 'fadewhite') return {
     outgoing: { ...additive, opacity: Math.max(0, 1 - p * 2) },
     incoming: { ...additive, opacity: Math.max(0, p * 2 - 1) },
@@ -79,7 +88,7 @@ export function resolvePreviewComposition(project: Project, defs: TransitionDef[
       const p = entrance && entryDef && entryDef.id !== 'cut' ? clamp(local / Math.max(.001, Math.min(entrance.duration, clip.duration))) : 1;
       const entry = p < 1 && entryDef ? entryDef.xfade === 'fadewhite' || entryDef.xfade === 'fadeblack'
         ? { incoming: { opacity: p, mixBlendMode: 'plus-lighter' as const }, fill: { color: entryDef.xfade === 'fadewhite' ? '#FFFFFF' : '#000000', opacity: 1 - p } }
-        : transitionPreviewStyles(entryDef, p, pixelScale) : undefined;
+        : transitionPreviewStyles(entryDef.xfade === 'hblur' ? { ...entryDef, xfade: 'legacy-entrance' } : entryDef, p, pixelScale, Math.min(project.width, project.height), project.width) : undefined;
       const entryStyle: CSSProperties = entry?.incoming ?? {};
       const filter = [style.filter, entryStyle.filter].filter(Boolean).join(' ');
       const transform = [style.transform, entryStyle.transform].filter(Boolean).join(' ');
@@ -97,9 +106,11 @@ export function resolvePreviewComposition(project: Project, defs: TransitionDef[
       if (!def || def.id === 'cut') continue;
       const duration = Math.min(applied.duration, outgoing.duration / 2, incoming.duration / 2);
       if (duration <= 0) continue;
-      const progress = (time - incoming.start + duration / 2) / duration;
+      const progress = def.xfade === 'gaussian'
+        ? (Math.round(time * project.fps) / project.fps - Number((Math.round(incoming.start * project.fps) / project.fps - duration / 2).toFixed(3))) / Number(duration.toFixed(3))
+        : (time - incoming.start + duration / 2) / duration;
       if (progress <= 0 || progress >= 1) continue;
-      const styles = transitionPreviewStyles(def, progress, pixelScale);
+      const styles = transitionPreviewStyles(def, progress, pixelScale, Math.min(project.width, project.height), project.width);
       return { id, base: id === baseId, layers: [layer(outgoing, styles.outgoing), layer(incoming, styles.incoming)], fill: styles.fill, transition: { applied, def, progress } };
     }
     const active = clips.filter((c) => time >= c.start && time < c.start + c.duration);
