@@ -277,7 +277,7 @@ export function buildExportArgs(project: Project, defs: TransitionDef[], srtPath
     const duration = Math.min(applied.duration, clip.duration);
     if (duration <= .001) return label;
     if (def.xfade === 'gaussian') {
-      const focused = focusFilter(label, 0, duration), out = next('focusenter');
+      const focused = focusFilter(label, 0, duration, true), out = next('focusenter');
       filters.push(`[${focused}]fade=t=in:st=0:d=${f3(duration)}${alpha ? ':alpha=1' : ''}[${out}]`); return out;
     }
     if (def.preview === 'blur') return applyEntranceFx(label, 0, duration, clip.duration, alpha);
@@ -292,14 +292,15 @@ export function buildExportArgs(project: Project, defs: TransitionDef[], srtPath
 
   /** Native Gaussian accepts per-frame sigma commands. Sending just before
    * each output tick avoids rounding a command onto the following frame. */
-  const focusFilter = (input: string, offset: number, length: number) => {
+  const focusFilter = (input: string, offset: number, length: number, incoming = false) => {
     const name = next('focus'), output = next('focused');
     const commands: string[] = [];
     for (let frame = Math.max(0, Math.ceil(offset * fps)); frame <= Math.ceil((offset + length) * fps); frame++) {
-      const p = (frame / fps - offset) / length, sigma = defocusSigma(p, W, H).toFixed(6);
+      const p = (frame / fps - offset) / length, sigma = defocusSigma(incoming ? 1 - p : p, W, H).toFixed(6);
       commands.push(`${Math.max(0, (frame - .25) / fps).toFixed(6)} gblur@${name} sigma ${sigma}, gblur@${name} sigmaV ${sigma}`);
     }
-    filters.push(`[${input}]sendcmd=c='${commands.join(';')}',gblur@${name}=sigma=0:sigmaV=0:steps=3[${output}]`);
+    const initial = defocusSigma(incoming ? 1 : 0, W, H).toFixed(6);
+    filters.push(`[${input}]sendcmd=c='${commands.join(';')}',gblur@${name}=sigma=${initial}:sigmaV=${initial}:steps=3[${output}]`);
     return output;
   };
 
@@ -318,13 +319,15 @@ export function buildExportArgs(project: Project, defs: TransitionDef[], srtPath
       const out = next('join');
       const td = applied && previous && incoming ? Math.min(applied.duration, previous.duration / 2, incoming.duration / 2) : 0;
       if (def && def.id !== 'cut' && td > .001) {
-        const a = next('aext'); const b = next('bext');
+        let a = next('aext'), b = next('bext');
         const fmt = alpha ? 'yuva444p' : 'yuv444p';
         filters.push(`[${label}]format=${fmt},tpad=stop_mode=clone:stop_duration=${f3(td / 2)},settb=AVTB[${a}]`);
         filters.push(`[${seg.label}]format=${fmt},tpad=start_mode=clone:start_duration=${f3(td / 2)},settb=AVTB[${b}]`);
-        const blend = def.xfade === 'gaussian' ? next('focusblend') : out;
-        filters.push(`[${a}][${b}]xfade=transition=${def.xfade === 'gaussian' ? 'fade' : def.xfade}:duration=${f3(td)}:offset=${f3(duration - td / 2)},format=${fmt},fps=${fps},tpad=stop_mode=clone:stop_duration=${1 / fps},trim=end_frame=${frameAt(duration + seg.dur)},setpts=PTS-STARTPTS,format=${alpha ? 'yuva420p' : 'yuv420p'},settb=AVTB[${blend}]`);
-        if (def.xfade === 'gaussian') { const focused = focusFilter(blend, Number((duration - td / 2).toFixed(3)), Number(td.toFixed(3))); filters.push(`[${focused}]null[${out}]`); }
+        if (def.xfade === 'gaussian') {
+          a = focusFilter(a, Number((duration - td / 2).toFixed(3)), Number(td.toFixed(3)));
+          b = focusFilter(b, 0, Number(td.toFixed(3)), true);
+        }
+        filters.push(`[${a}][${b}]xfade=transition=${def.xfade === 'gaussian' ? 'fade' : def.xfade}:duration=${f3(td)}:offset=${f3(duration - td / 2)},format=${fmt},fps=${fps},tpad=stop_mode=clone:stop_duration=${1 / fps},trim=end_frame=${frameAt(duration + seg.dur)},setpts=PTS-STARTPTS,format=${alpha ? 'yuva420p' : 'yuv420p'},settb=AVTB[${out}]`);
       } else filters.push(`[${label}][${seg.label}]concat=n=2:v=1:a=0[${out}]`);
       label = out;
       duration += seg.dur;

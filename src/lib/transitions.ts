@@ -14,7 +14,7 @@ export const BUILTIN_TRANSITIONS: TransitionDef[] = [
   { id: 'circle-open', name: 'Circle Open', description: 'Iris opens on the next shot', xfade: 'circleopen', preview: 'wipe', duration: 0.7, collection: 'Stylized' },
   { id: 'pixelize', name: 'Pixelize', description: 'Blocky digital breakdown', xfade: 'pixelize', preview: 'dissolve', duration: 0.6, collection: 'Stylized' },
   { id: 'blur-inout', name: 'Directional Smear', description: 'Horizontal forward smear blend between shots', xfade: 'hblur', preview: 'blur', duration: 2.0, collection: 'Stylized' },
-  { id: 'gaussian-defocus', name: 'Camera Defocus', description: 'Uniform Gaussian defocus and refocus between shots', xfade: 'gaussian', preview: 'defocus', duration: 1, collection: 'Stylized' },
+  { id: 'gaussian-defocus', name: 'Camera Defocus', description: 'Outgoing shot defocuses while the incoming shot comes into focus', xfade: 'gaussian', preview: 'defocus', duration: 1, collection: 'Stylized' },
 ];
 
 const XFADES = ['fade', 'fadeblack', 'fadewhite', 'fadegrays', 'slideleft', 'slideright', 'slideup', 'slidedown', 'wipeleft', 'wiperight', 'wipeup', 'wipedown', 'circleopen', 'circleclose', 'pixelize', 'smoothleft', 'smoothright', 'dissolve', 'radial', 'hblur'];

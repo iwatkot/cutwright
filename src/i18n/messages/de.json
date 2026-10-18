@@ -924,7 +924,6 @@
   "Unassigned": "Nicht zugewiesen",
   "Undid one editing transaction.": "Eine Bearbeitung rückgängig gemacht.",
   "Undo": "Rückgängig",
-  "Uniform Gaussian defocus and refocus between shots": "Gleichmäßige gaußsche Unschärfe mit erneuter Scharfstellung zwischen Clips",
   "Unknown connector request.": "Unbekannt: Connector-Anfrage.",
   "Unknown editor tool: {0}": "Unbekannt: Editor-Werkzeug {0}.",
   "Unknown export job: {0}": "Unbekannt: Exportauftrag {0}.",
@@ -1000,5 +999,6 @@
   "Zoom preview out · Wheel to zoom": "Vorschau verkleinern · Mausrad zum Zoomen",
   "Zoom relative to Fit · Wheel to zoom · Right-drag{0} to pan": "Zoom relativ zu Einpassen · Mausrad zum Zoomen · Rechts ziehen{0} zum Verschieben",
   "Zoom timeline in": "Zeitleiste vergrößern",
-  "Zoom timeline out": "Zeitleiste verkleinern"
+  "Zoom timeline out": "Zeitleiste verkleinern",
+  "Outgoing shot defocuses while the incoming shot comes into focus": "Der ausgehende Clip wird unscharf, während der eingehende scharf wird"
 }

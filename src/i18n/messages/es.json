@@ -924,7 +924,6 @@
   "Unassigned": "Sin asignar",
   "Undid one editing transaction.": "Se deshizo una edición.",
   "Undo": "Deshacer",
-  "Uniform Gaussian defocus and refocus between shots": "Desenfoque gaussiano uniforme y reenfoque entre tomas",
   "Unknown connector request.": "Desconocido: solicitud del conector.",
   "Unknown editor tool: {0}": "Desconocido: herramienta del editor {0}.",
   "Unknown export job: {0}": "Desconocido: tarea de exportación {0}.",
@@ -1000,5 +999,6 @@
   "Zoom preview out · Wheel to zoom": "Alejar vista previa · rueda para zoom",
   "Zoom relative to Fit · Wheel to zoom · Right-drag{0} to pan": "Zoom respecto al ajuste · rueda para zoom · arrastra con el derecho{0} para desplazar",
   "Zoom timeline in": "Acercar línea de tiempo",
-  "Zoom timeline out": "Alejar línea de tiempo"
+  "Zoom timeline out": "Alejar línea de tiempo",
+  "Outgoing shot defocuses while the incoming shot comes into focus": "La toma saliente se desenfoca mientras la entrante recupera el foco"
 }

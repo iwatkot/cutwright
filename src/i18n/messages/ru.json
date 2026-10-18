@@ -924,7 +924,6 @@
   "Unassigned": "Не назначено",
   "Undid one editing transaction.": "Отменено одно изменение.",
   "Undo": "Отменить",
-  "Uniform Gaussian defocus and refocus between shots": "Равномерное гауссово размытие и восстановление фокуса между кадрами",
   "Unknown connector request.": "Неизвестно: запрос к коннектору.",
   "Unknown editor tool: {0}": "Неизвестно: инструмент редактора {0}.",
   "Unknown export job: {0}": "Неизвестно: задание экспорта {0}.",
@@ -1000,5 +999,6 @@
   "Zoom preview out · Wheel to zoom": "Уменьшить предпросмотр · масштаб колёсиком",
   "Zoom relative to Fit · Wheel to zoom · Right-drag{0} to pan": "Масштаб относительно вписанного · колёсико меняет масштаб · правая кнопка{0} перемещает",
   "Zoom timeline in": "Увеличить шкалу времени",
-  "Zoom timeline out": "Уменьшить шкалу времени"
+  "Zoom timeline out": "Уменьшить шкалу времени",
+  "Outgoing shot defocuses while the incoming shot comes into focus": "Уходящий кадр теряет резкость, а входящий обретает её"
 }

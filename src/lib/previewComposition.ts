@@ -32,7 +32,10 @@ export function transitionPreviewStyles(def: TransitionDef, progress: number, pi
   const additive: CSSProperties = { mixBlendMode: 'plus-lighter' };
   const blend = { outgoing: { ...additive, opacity: 1 - p }, incoming: { ...additive, opacity: p } };
   if (def.xfade === 'hblur') { const filter = `url(#${smearPreview(p, width, pixelScale).id})`; return { outgoing: { ...blend.outgoing, filter }, incoming: { ...blend.incoming, filter } }; }
-  if (def.xfade === 'gaussian') { const filter = `blur(${defocusSigma(p, minDimension, minDimension) * pixelScale}px)`; return { outgoing: { ...blend.outgoing, filter }, incoming: { ...blend.incoming, filter } }; }
+  if (def.xfade === 'gaussian') return {
+    outgoing: { ...blend.outgoing, filter: `blur(${defocusSigma(p, minDimension, minDimension) * pixelScale}px)` },
+    incoming: { ...blend.incoming, filter: `blur(${defocusSigma(1 - p, minDimension, minDimension) * pixelScale}px)` },
+  };
   if (def.xfade === 'fadeblack' || def.xfade === 'fadewhite') return {
     outgoing: { ...additive, opacity: Math.max(0, 1 - p * 2) },
     incoming: { ...additive, opacity: Math.max(0, p * 2 - 1) },

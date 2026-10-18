@@ -1,7 +1,9 @@
-/** One isotropic focus curve for preview, browser and native export. */
+/** Outgoing detail only decreases; incoming uses the reversed curve. Blur
+ * belongs to each image before blending, never to the mixed image. The 18px
+ * midpoint is retained, with a smooth 0..36px travel through disappearance. */
 export function defocusSigma(progress: number, width: number, height: number): number {
   const p = Math.max(0, Math.min(1, progress));
-  return p === 0 || p === 1 ? 0 : 18 * Math.min(width, height) / 1080 * Math.sin(Math.PI * p) ** 2;
+  return 36 * Math.min(width, height) / 1080 * p * p * (3 - 2 * p);
 }
 
 /** Reference Gaussian with clamped edges and premultiplied alpha. Browser

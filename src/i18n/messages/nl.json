@@ -924,7 +924,6 @@
   "Unassigned": "Niet toegewezen",
   "Undid one editing transaction.": "Eén bewerking ongedaan gemaakt.",
   "Undo": "Ongedaan maken",
-  "Uniform Gaussian defocus and refocus between shots": "Gelijkmatige Gaussische onscherpte en hernieuwde scherpstelling tussen beelden",
   "Unknown connector request.": "Onbekend: connectorverzoek.",
   "Unknown editor tool: {0}": "Onbekend: editortool {0}.",
   "Unknown export job: {0}": "Onbekend: exporttaak {0}.",
@@ -1000,5 +999,6 @@
   "Zoom preview out · Wheel to zoom": "Uitzoomen op voorbeeld · zoom met het wiel",
   "Zoom relative to Fit · Wheel to zoom · Right-drag{0} to pan": "Zoom ten opzichte van passend · wiel om te zoomen · rechts slepen{0} om te verschuiven",
   "Zoom timeline in": "Inzoomen op tijdlijn",
-  "Zoom timeline out": "Uitzoomen op tijdlijn"
+  "Zoom timeline out": "Uitzoomen op tijdlijn",
+  "Outgoing shot defocuses while the incoming shot comes into focus": "Het uitgaande beeld vervaagt terwijl het inkomende scherp wordt"
 }

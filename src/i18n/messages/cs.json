@@ -924,7 +924,6 @@
   "Unassigned": "Nepřiřazeno",
   "Undid one editing transaction.": "Vrácena jedna úprava.",
   "Undo": "Zpět",
-  "Uniform Gaussian defocus and refocus between shots": "Rovnoměrné Gaussovo rozostření a zaostření mezi záběry",
   "Unknown connector request.": "Neznámé: požadavek konektoru.",
   "Unknown editor tool: {0}": "Neznámé: nástroj editoru {0}.",
   "Unknown export job: {0}": "Neznámé: úloha exportu {0}.",
@@ -1000,5 +999,6 @@
   "Zoom preview out · Wheel to zoom": "Oddálit náhled · zoom kolečkem",
   "Zoom relative to Fit · Wheel to zoom · Right-drag{0} to pan": "Zoom vzhledem k přizpůsobení · kolečko pro zoom · tažení pravým tlačítkem{0} pro posun",
   "Zoom timeline in": "Přiblížit časovou osu",
-  "Zoom timeline out": "Oddálit časovou osu"
+  "Zoom timeline out": "Oddálit časovou osu",
+  "Outgoing shot defocuses while the incoming shot comes into focus": "Odchozí záběr se rozostřuje, zatímco příchozí zaostřuje"
 }

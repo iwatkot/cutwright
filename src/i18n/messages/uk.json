@@ -924,7 +924,6 @@
   "Unassigned": "Не призначено",
   "Undid one editing transaction.": "Скасовано одну зміну.",
   "Undo": "Скасувати",
-  "Uniform Gaussian defocus and refocus between shots": "Рівномірне гаусове розмиття та відновлення фокуса між кадрами",
   "Unknown connector request.": "Невідомо: запит до конектора.",
   "Unknown editor tool: {0}": "Невідомо: інструмент редактора {0}.",
   "Unknown export job: {0}": "Невідомо: завдання експорту {0}.",
@@ -1000,5 +999,6 @@
   "Zoom preview out · Wheel to zoom": "Зменшити попередній перегляд · масштаб коліщатком",
   "Zoom relative to Fit · Wheel to zoom · Right-drag{0} to pan": "Масштаб відносно вписаного · коліщатко змінює масштаб · права кнопка{0} переміщує",
   "Zoom timeline in": "Збільшити шкалу часу",
-  "Zoom timeline out": "Зменшити шкалу часу"
+  "Zoom timeline out": "Зменшити шкалу часу",
+  "Outgoing shot defocuses while the incoming shot comes into focus": "Вихідний кадр втрачає різкість, а вхідний набуває її"
 }

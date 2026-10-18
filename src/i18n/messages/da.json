@@ -924,7 +924,6 @@
   "Unassigned": "Ikke tildelt",
   "Undid one editing transaction.": "Fortrød én redigering.",
   "Undo": "Fortryd",
-  "Uniform Gaussian defocus and refocus between shots": "Ensartet gaussisk uskarphed og ny fokusering mellem klip",
   "Unknown connector request.": "Ukendt: connectoranmodning.",
   "Unknown editor tool: {0}": "Ukendt: editorværktøj {0}.",
   "Unknown export job: {0}": "Ukendt: eksportopgave {0}.",
@@ -1000,5 +999,6 @@
   "Zoom preview out · Wheel to zoom": "Zoom ud på forhåndsvisning · brug hjulet til at zoome",
   "Zoom relative to Fit · Wheel to zoom · Right-drag{0} to pan": "Zoom i forhold til Tilpas · hjul for zoom · højretræk{0} for panorering",
   "Zoom timeline in": "Zoom ind på tidslinje",
-  "Zoom timeline out": "Zoom ud på tidslinje"
+  "Zoom timeline out": "Zoom ud på tidslinje",
+  "Outgoing shot defocuses while the incoming shot comes into focus": "Det udgående klip bliver uskarpt, mens det indgående stiller skarpt"
 }

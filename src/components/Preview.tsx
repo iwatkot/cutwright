@@ -19,6 +19,7 @@ import CanvasAids, { CanvasRulers } from './CanvasAids';
 import { usePreviewNavigation } from './usePreviewNavigation';
 import { MAX_PREVIEW_ZOOM, MIN_PREVIEW_ZOOM } from '../lib/previewNavigation';
 import './previewNavigation.css';
+import { GaussianMediaPreview } from './GaussianMediaPreview';
 
 function playableMediaUrl(media?: MediaItem): string {
   if (!media?.src || media.offline) return '';
@@ -382,7 +383,7 @@ export default function Preview() {
     return () => cleanups.forEach((cleanup) => cleanup());
   }, [playhead, playing, project]);
 
-  const mediaLayer = ({ clip, style, sourceTime, frozen }: PreviewLayer, keyPrefix: string) => {
+  const mediaLayer = ({ clip, style, sourceTime, frozen }: PreviewLayer, keyPrefix: string, base: boolean) => {
     const media = mediaById.get(clip.mediaId);
     const overlay = resolveOverlay(clip, media);
     const source = playableMediaUrl(media);
@@ -408,18 +409,19 @@ export default function Preview() {
       transform: `translate(${clip.posX ?? 0}%, ${clip.posY ?? 0}%) scale(${clip.scale ?? 1}) rotate(${clip.rotate ?? 0}deg)`,
       filter: `brightness(${clip.brightness ?? 1}) contrast(${clip.contrast ?? 1}) saturate(${clip.saturation ?? 1})`,
     };
+    const gaussian = !overlay && (media?.kind === 'video' || media?.kind === 'image') && /^blur\(([\d.e+-]+)px\)$/.exec(String(style.filter ?? ''));
+    const picture = source && media?.kind === 'video' ? <video crossOrigin="anonymous" {...common} src={source} playsInline style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', ...fx, ...(gaussian ? { visibility: 'hidden' } : {}) }} />
+      : source && media?.kind === 'image' ? <img src={source} alt={clip.name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', ...fx, ...(gaussian ? { visibility: 'hidden' } : {}) }} /> : null;
     return (
-      <div key={keyPrefix + clip.id} className="scene" data-cw-clip={clip.id} data-cw-layer-source-time={sourceTime} data-cw-frozen={frozen ? '1' : '0'} style={style}>
+      <div key={keyPrefix + clip.id} className="scene" data-cw-clip={clip.id} data-cw-layer-source-time={sourceTime} data-cw-frozen={frozen ? '1' : '0'} style={gaussian ? { ...style, filter: undefined } : style}>
         {overlay ? (
           <div data-cw-overlay={overlay.kind} data-overlay-source-time={sourceTime}
             aria-label={overlay.kind === 'title' ? overlay.text : clip.name}
             style={{ position: 'absolute', inset: 0, ...fx }}
             dangerouslySetInnerHTML={{ __html: overlaySvg(overlay, project.width, project.height, sourceTime, project.fonts) }} />
-        ) : source && media?.kind === 'video' ? (
-          <video crossOrigin="anonymous" {...common} src={source} playsInline style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', ...fx }} />
-        ) : source && media?.kind === 'image' ? (
-          <img src={source} alt={clip.name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', ...fx }} />
-        ) : (
+        ) : gaussian ? (
+          <GaussianMediaPreview width={project.width} height={project.height} sigma={Number(gaussian[1]) / pixelScale} clip={clip} base={base}>{picture}</GaussianMediaPreview>
+        ) : picture ? picture : (
           <>
             <div className="scenename">{clip.name.replace(/_/g, ' ')}</div>
             <div className="scenesub">{project.name} · {project.width}×{project.height} · {project.fps}fps</div>
@@ -462,7 +464,7 @@ export default function Preview() {
               {composition.length === 0 && <div className="scene" style={{ background: '#000' }}><div className="scenename">{uiText("Empty timeline")}</div><div className="scenesub">{uiText("Import media to start")}</div></div>}
               {composition.map((track) => <div key={track.id} className="scene" data-cw-track={track.id} data-transition={track.transition?.applied.id}
                 style={{ isolation: 'isolate', overflow: 'hidden', pointerEvents: 'none', ...(track.base ? { background: '#000' } : {}) }}>
-                {track.layers.map((layer) => mediaLayer(layer, track.id + '-'))}
+                {track.layers.map((layer) => mediaLayer(layer, track.id + '-', track.base))}
                 {track.fill && <div className="scene" style={{ background: track.fill.color, opacity: track.fill.opacity, mixBlendMode: 'plus-lighter' }} />}
               </div>)}
               {audioClips.map((c) => {

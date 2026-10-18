@@ -924,7 +924,6 @@
   "Unassigned": "Non attribué",
   "Undid one editing transaction.": "Une modification annulée.",
   "Undo": "Annuler",
-  "Uniform Gaussian defocus and refocus between shots": "Flou gaussien uniforme puis remise au point entre les plans",
   "Unknown connector request.": "Inconnu : requête du connecteur.",
   "Unknown editor tool: {0}": "Inconnu : outil de l’éditeur {0}.",
   "Unknown export job: {0}": "Inconnu : tâche d’export {0}.",
@@ -1000,5 +999,6 @@
   "Zoom preview out · Wheel to zoom": "Réduire l’aperçu · molette pour zoomer",
   "Zoom relative to Fit · Wheel to zoom · Right-drag{0} to pan": "Zoom relatif à l’ajustement · molette pour zoomer · glisser à droite{0} pour déplacer",
   "Zoom timeline in": "Agrandir la chronologie",
-  "Zoom timeline out": "Réduire la chronologie"
+  "Zoom timeline out": "Réduire la chronologie",
+  "Outgoing shot defocuses while the incoming shot comes into focus": "Le plan sortant devient flou tandis que le plan entrant devient net"
 }

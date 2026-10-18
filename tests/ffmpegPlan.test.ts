@@ -25,6 +25,9 @@ describe('ffmpegPlan composition', () => {
     expect(result).toContain('xfade=transition=fade:duration=1.000:offset=1.500');
     expect(result).toContain('gblur@'); expect(result).toContain('sigmaV 6.000000');
     expect(result).not.toContain('xfade=transition=gaussian'); expect(result).not.toContain('transition=hblur');
+    const beforeBlend = result.slice(0, result.indexOf('xfade=transition=fade'));
+    expect(beforeBlend.match(/gblur@[^=]+=sigma=/g)).toHaveLength(2);
+    expect(beforeBlend).toContain('=sigma=12.000000:sigmaV=12.000000');
   });
   it('includes longer audio and subtitle tails in the complete timeline', () => {
     const p = base({ clips: [

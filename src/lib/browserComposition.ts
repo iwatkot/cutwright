@@ -1,6 +1,7 @@
 import { overlaySvg, resolveOverlay } from './overlay';
 import { clipVisualGain } from './clipFades';
 import { defocusSigma, gaussianRgba } from './defocus';
+import { paintClampedGaussian } from './defocusCanvas';
 import { drawCaption } from './captions';
 import { type PreviewLayer, type PreviewTrack } from './previewComposition';
 import type { AppliedTransition, Clip, Project, TransitionDef } from './types';
@@ -113,8 +114,10 @@ export function transitionRgba(a: Uint8ClampedArray, b: Uint8ClampedArray, width
   if (p === 0) { out.set(a); return out; }
   if (p === 1) { out.set(b); return out; }
   if (xfade === 'gaussian') {
-    for (let i = 0; i < out.length; i++) out[i] = a[i] * q + b[i] * p;
-    out.set(gaussianRgba(out, width, height, defocusSigma(p, width, height))); return out;
+    const outgoing = gaussianRgba(a, width, height, defocusSigma(p, width, height));
+    const incoming = gaussianRgba(b, width, height, defocusSigma(q, width, height));
+    for (let i = 0; i < out.length; i++) out[i] = outgoing[i] * q + incoming[i] * p;
+    return out;
   }
   if (xfade === 'hblur') {
     // A forward box window shrinks at the right edge, with no wrap or black border.
@@ -257,19 +260,11 @@ export function createBrowserCompositor(options: BrowserCompositorOptions) {
     return pool;
   }
   const cache = new Map<string, CanvasImageSource>();
-  const pad = Math.ceil(defocusSigma(.5, W, H) * 3);
+  const pad = Math.ceil(defocusSigma(1, W, H) * 3);
   let focusSurface: BrowserCanvas | undefined;
   function focus(source: BrowserCanvas, destination: BrowserCanvasContext, sigma: number) {
     focusSurface ??= factory(W + 2 * pad, H + 2 * pad);
-    const edges = focusSurface.getContext('2d') as BrowserCanvasContext;
-    clear(edges, W + 2 * pad, H + 2 * pad);
-    // Extend the edge pixels before filtering: uniform footage stays uniform,
-    // including corners; no dark vignette or directional displacement.
-    const xs = [[0, 1, 0, pad], [0, W, pad, W], [W - 1, 1, pad + W, pad]];
-    const ys = [[0, 1, 0, pad], [0, H, pad, H], [H - 1, 1, pad + H, pad]];
-    for (const [sx, sw, dx, dw] of xs) for (const [sy, sh, dy, dh] of ys) edges.drawImage(source, sx, sy, sw, sh, dx, dy, dw, dh);
-    clear(destination, W, H); destination.save(); destination.filter = `blur(${sigma}px)`;
-    destination.drawImage(focusSurface, -pad, -pad); destination.restore();
+    paintClampedGaussian(source, destination, focusSurface, W, H, pad, sigma);
   }
   // Two changing roll layers must not evict a third, still website on each frame.
   const cacheLimit = Number.isFinite(options.overlayCacheSize) ? Math.max(1, Math.min(8, Math.floor(options.overlayCacheSize!))) : 4;
@@ -341,7 +336,7 @@ export function createBrowserCompositor(options: BrowserCompositorOptions) {
           if (entry && local < Math.min(entry.applied.duration, clip.duration)) {
             if (entry.def.xfade === 'gaussian') {
               const p = clamp(local / Math.min(entry.applied.duration, clip.duration));
-              focus(surfaces[index], contexts[2], defocusSigma(p, W, H)); clear(dst, W, H, track.base);
+              focus(surfaces[index], contexts[2], defocusSigma(1 - p, W, H)); clear(dst, W, H, track.base);
               dst.globalAlpha = p; dst.drawImage(surfaces[2], 0, 0); dst.globalAlpha = 1;
             } else applyEntrance(dst, contexts[2], surfaces[index], entry, local, clip, track.base, W, H);
           }
@@ -354,11 +349,15 @@ export function createBrowserCompositor(options: BrowserCompositorOptions) {
           }
         }
         if (track.transition && track.layers.length === 2) {
-          const a = contexts[0].getImageData(0, 0, W, H), b = contexts[1].getImageData(0, 0, W, H), out = contexts[2].createImageData(W, H);
           const defocus = track.transition.def.xfade === 'gaussian';
+          if (defocus) for (const index of [0, 1]) {
+            const p = track.transition.progress;
+            focus(surfaces[index], contexts[2], defocusSigma(index === 0 ? p : 1 - p, W, H));
+            clear(contexts[index], W, H); contexts[index].drawImage(surfaces[2], 0, 0);
+          }
+          const a = contexts[0].getImageData(0, 0, W, H), b = contexts[1].getImageData(0, 0, W, H), out = contexts[2].createImageData(W, H);
           transitionRgba(a.data, b.data, W, H, defocus ? 'fade' : track.transition.def.xfade, track.transition.progress, out.data);
           contexts[2].putImageData(out, 0, 0);
-          if (defocus) { focus(surfaces[2], contexts[0], defocusSigma(track.transition.progress, W, H)); clear(contexts[2], W, H); contexts[2].drawImage(surfaces[0], 0, 0); }
         } else if (track.layers.length) {
           clear(contexts[2], W, H, track.base); contexts[2].drawImage(surfaces[0], 0, 0);
         }
