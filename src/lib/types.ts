@@ -145,8 +145,8 @@ export interface TransitionDef {
   description: string;
   /** FFmpeg xfade transition name, or 'fadeblack' style custom handling. */
   xfade: string;
-  /** How the web preview approximates it: fade | dissolve | slide | zoom | wipe | blur */
-  preview: 'fade' | 'dissolve' | 'slide' | 'zoom' | 'wipe' | 'blur';
+  /** Built-in blur remains the legacy directional effect; defocus is isotropic. */
+  preview: 'fade' | 'dissolve' | 'slide' | 'zoom' | 'wipe' | 'blur' | 'defocus';
   color?: string;
   duration: number; // default seconds
   generated?: boolean;

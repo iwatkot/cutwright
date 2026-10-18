@@ -171,7 +171,6 @@
   "Basic": "Einfach",
   "Between clips": "Zwischen Clips",
   "Blocky digital breakdown": "Blockartige digitale Auflösung",
-  "Blur In/Out": "Unschärfe ein/aus",
   "Bold": "Fett",
   "Bold statement": "Prägnante Aussage",
   "Brightness": "Helligkeit",
@@ -182,6 +181,7 @@
   "Browser origin required.": "Erforderlich: Browser-Ursprung.",
   "Browser storage is unavailable; changes last for this session. ": "Browserspeicher nicht verfügbar; Änderungen gelten nur für diese Sitzung. ",
   "Callouts": "Hinweise",
+  "Camera Defocus": "Kameraunschärfe",
   "Cancel export": "Export abbrechen",
   "Cancel export · {0}%": "Export abbrechen · {0}%",
   "Cancelled": "Abgebrochen",
@@ -320,6 +320,7 @@
   "Detach audio": "Audio abtrennen",
   "Dip through black — chapter breaks, endings": "Über Schwarz blenden – für Kapitelwechsel und Abschlüsse",
   "Dip through white — flashbacks, dream beats": "Über Weiß blenden – für Rückblenden und Traumszenen",
+  "Directional Smear": "Gerichtetes Verschmieren",
   "Disconnect": "Trennen",
   "Disconnected": "Getrennt",
   "Dismiss": "Verwerfen",
@@ -436,6 +437,7 @@
   "History": "Verlauf",
   "Hold to pan preview": "Gedrückt halten, um die Vorschau zu verschieben",
   "Horizontal": "Horizontal",
+  "Horizontal forward smear blend between shots": "Horizontales gerichtetes Verschmieren zwischen Clips",
   "Horizontal offset": "Horizontaler Versatz",
   "Horizontal pixel ruler, drag for a horizontal guide": "Horizontales Pixellineal; ziehen für eine horizontale Hilfslinie",
   "Horizontal spacing": "Horizontaler Abstand",
@@ -539,7 +541,6 @@
   "Missing or invalid \"{0}\" list": "Liste „{0}“ fehlt oder ist ungültig",
   "Missing project name": "Projektname fehlt",
   "More detail, larger file.": "Mehr Details, größere Datei.",
-  "Movavi BlurInOut — horizontal blur blend between shots": "Movavi BlurInOut – horizontale Unschärfe zwischen Bildern",
   "Movavi config has no timeline clips/tracks": "Die Movavi-Konfiguration enthält keine Zeitleisten-Clips oder Spuren",
   "Move playhead here": "Abspielkopf hierher bewegen",
   "Move track down": "Spur nach unten",
@@ -998,5 +999,6 @@
   "Zoom preview out · Wheel to zoom": "Vorschau verkleinern · Mausrad zum Zoomen",
   "Zoom relative to Fit · Wheel to zoom · Right-drag{0} to pan": "Zoom relativ zu Einpassen · Mausrad zum Zoomen · Rechts ziehen{0} zum Verschieben",
   "Zoom timeline in": "Zeitleiste vergrößern",
-  "Zoom timeline out": "Zeitleiste verkleinern"
+  "Zoom timeline out": "Zeitleiste verkleinern",
+  "Outgoing shot defocuses while the incoming shot comes into focus": "Der ausgehende Clip wird unscharf, während der eingehende scharf wird"
 }

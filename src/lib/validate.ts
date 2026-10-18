@@ -127,7 +127,7 @@ export function validateProject(raw: unknown): { ok: boolean; project?: Project;
     }
   }
   for (const def of p.customTransitions as Project['customTransitions']) {
-    if (typeof def.name !== 'string' || typeof def.xfade !== 'string' || !['fade', 'dissolve', 'slide', 'zoom', 'wipe', 'blur'].includes(def.preview) || !between(def.duration, 0.01, 30)) errors.push(`Invalid transition definition "${String(def.id)}"`);
+    if (typeof def.name !== 'string' || typeof def.xfade !== 'string' || !['fade', 'dissolve', 'slide', 'zoom', 'wipe', 'blur', 'defocus'].includes(def.preview) || !between(def.duration, 0.01, 30)) errors.push(`Invalid transition definition "${String(def.id)}"`);
   }
   if (errors.length) return { ok: false, errors };
   return { ok: true, project: { trackSettings: {}, ...(p as unknown as Project) }, errors };

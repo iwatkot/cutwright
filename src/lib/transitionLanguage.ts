@@ -1,6 +1,8 @@
 /** Recognize the same small transition vocabulary in all supported UI languages.
  * This normalizes matching only; a person's original description remains their name. */
 const concepts: [string, string][] = [
+  ['directional','gerichtet\\p{L}*|retningsbestemt\\p{L}*|usmjeren\\p{L}*|usmeren\\p{L}*|smerov\\p{L}*|gericht\\p{L}*|directionnel\\p{L}*|direccional\\p{L}*|направлен\\p{L}*|напрямлен\\p{L}*'],
+  ['blur','kameraunscharf\\p{L}*|kamerauskarphed|rozostren\\p{L}*|camera-onscherpte|defocalis\\p{L}*|расфокус\\p{L}*|розфокус\\p{L}*'],
   ['black','schwarz|sort|crn\\p{L}*|cern\\p{L}*|zwart|noir\\p{L}*|negr\\p{L}*|черн\\p{L}*|чорн\\p{L}*'],
   ['white','wei[ßs]\\p{L}*|hvid\\p{L}*|bijel\\p{L}*|bel(?:a|e|i|o|u|og|oj|om|ih|im)|beo|bil\\p{L}*|wit(?:te)?|blanc\\p{L}*|бел\\p{L}*|бiл\\p{L}*|біл\\p{L}*'],
   ['slide','schieb\\p{L}*|gleit\\p{L}*|skub\\p{L}*|kliz\\p{L}*|posun\\p{L}*|schui[fv]\\p{L}*|gliss\\p{L}*|desliz\\p{L}*|сдвиг\\p{L}*|сдвин\\p{L}*|зсув\\p{L}*|зсун\\p{L}*'],

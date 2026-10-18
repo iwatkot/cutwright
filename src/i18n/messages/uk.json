@@ -171,7 +171,6 @@
   "Basic": "Базові",
   "Between clips": "Між кліпами",
   "Blocky digital breakdown": "Цифровий розпад на блоки",
-  "Blur In/Out": "Розмиття входу/виходу",
   "Bold": "Жирне",
   "Bold statement": "Сильне висловлювання",
   "Brightness": "Яскравість",
@@ -182,6 +181,7 @@
   "Browser origin required.": "Потрібно: джерело браузера.",
   "Browser storage is unavailable; changes last for this session. ": "Сховище браузера недоступне; зміни діють лише в цьому сеансі. ",
   "Callouts": "Виноски",
+  "Camera Defocus": "Розфокусування камери",
   "Cancel export": "Скасувати експорт",
   "Cancel export · {0}%": "Скасувати експорт · {0}%",
   "Cancelled": "Скасовано",
@@ -320,6 +320,7 @@
   "Detach audio": "Відокремити аудіо",
   "Dip through black — chapter breaks, endings": "Перехід через чорний для зміни розділів і кінцівок",
   "Dip through white — flashbacks, dream beats": "Перехід через білий для спогадів і сновидінь",
+  "Directional Smear": "Напрямлене розмазування",
   "Disconnect": "Від’єднати",
   "Disconnected": "Від’єднано",
   "Dismiss": "Приховати",
@@ -436,6 +437,7 @@
   "History": "Історія",
   "Hold to pan preview": "Утримуйте для переміщення області перегляду",
   "Horizontal": "Горизонтальна",
+  "Horizontal forward smear blend between shots": "Горизонтальне напрямлене розмазування між кадрами",
   "Horizontal offset": "Зсув по горизонталі",
   "Horizontal pixel ruler, drag for a horizontal guide": "Горизонтальна піксельна лінійка; перетягніть для горизонтальної напрямної",
   "Horizontal spacing": "Інтервал по горизонталі",
@@ -539,7 +541,6 @@
   "Missing or invalid \"{0}\" list": "Список «{0}» відсутній або некоректний",
   "Missing project name": "Не задано назву проєкту",
   "More detail, larger file.": "Більше деталей, більший файл.",
-  "Movavi BlurInOut — horizontal blur blend between shots": "Movavi BlurInOut — змішування кадрів із горизонтальним розмиттям",
   "Movavi config has no timeline clips/tracks": "У конфігурації Movavi немає кліпів чи доріжок шкали часу",
   "Move playhead here": "Перемістити курсор сюди",
   "Move track down": "Опустити доріжку",
@@ -998,5 +999,6 @@
   "Zoom preview out · Wheel to zoom": "Зменшити попередній перегляд · масштаб коліщатком",
   "Zoom relative to Fit · Wheel to zoom · Right-drag{0} to pan": "Масштаб відносно вписаного · коліщатко змінює масштаб · права кнопка{0} переміщує",
   "Zoom timeline in": "Збільшити шкалу часу",
-  "Zoom timeline out": "Зменшити шкалу часу"
+  "Zoom timeline out": "Зменшити шкалу часу",
+  "Outgoing shot defocuses while the incoming shot comes into focus": "Вихідний кадр втрачає різкість, а вхідний набуває її"
 }

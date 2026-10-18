@@ -16,6 +16,19 @@ const base = (patch: Partial<Project>): Project => ({
 const graph = (p: Project) => buildExportArgs(p, BUILTIN_TRANSITIONS, null, 'out.mp4').args.join(' ');
 
 describe('ffmpegPlan composition', () => {
+  it('renders camera focus through two-axis Gaussian commands rather than the legacy horizontal xfade', () => {
+    const p = base({ clips: [
+      { id: '1', mediaId: 'a', trackId: 'v1', name: 'first', start: 0, duration: 2, offset: 0, color: '#111' },
+      { id: '2', mediaId: 'b', trackId: 'v1', name: 'second', start: 2, duration: 2, offset: 0, color: '#222' },
+    ], transitions: [{ id: 'focus', defId: 'gaussian-defocus', at: 2, anchorClipId: '2', duration: 1 }] });
+    const result = graph(p);
+    expect(result).toContain('xfade=transition=fade:duration=1.000:offset=1.500');
+    expect(result).toContain('gblur@'); expect(result).toContain('sigmaV 6.000000');
+    expect(result).not.toContain('xfade=transition=gaussian'); expect(result).not.toContain('transition=hblur');
+    const beforeBlend = result.slice(0, result.indexOf('xfade=transition=fade'));
+    expect(beforeBlend.match(/gblur@[^=]+=sigma=/g)).toHaveLength(2);
+    expect(beforeBlend).toContain('=sigma=12.000000:sigmaV=12.000000');
+  });
   it('includes longer audio and subtitle tails in the complete timeline', () => {
     const p = base({ clips: [
       { id: '1', mediaId: 'a', trackId: 'v1', name: 'video', start: 0, duration: 2, offset: 0, color: '#111' },

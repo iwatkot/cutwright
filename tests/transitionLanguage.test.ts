@@ -36,7 +36,7 @@ describe('localized transition descriptions', () => {
   it.each([
     ['Naar rechts schuiven 0,8 seconden','slideright',.8],
     ['Omhoog vegen 0,5 seconden','wipeup',.5],
-    ['Vervagen 1,2 seconden','hblur',1.2],
+    ['Vervagen 1,2 seconden','gaussian',1.2],
   ] as const)('recognizes the Dutch infinitive used by the guide: %s',(request,xfade,duration)=>{
     const result=synthesizeTransition(request);
     expect(result.xfade).toBe(xfade);expect(result.duration).toBe(duration);

@@ -1,5 +1,7 @@
 import { overlaySvg, resolveOverlay } from './overlay';
 import { clipVisualGain } from './clipFades';
+import { defocusSigma, gaussianRgba } from './defocus';
+import { paintClampedGaussian } from './defocusCanvas';
 import { drawCaption } from './captions';
 import { type PreviewLayer, type PreviewTrack } from './previewComposition';
 import type { AppliedTransition, Clip, Project, TransitionDef } from './types';
@@ -30,7 +32,7 @@ export interface BrowserFramePlan {
 
 const clamp = (v: number) => Math.max(0, Math.min(1, v));
 const smooth = (v: number) => { const t = clamp(v); return t * t * (3 - 2 * t); };
-const SUPPORTED_XFADES = new Set(['fade', 'fadeblack', 'fadewhite', 'fadegrays', 'slideleft', 'slideright', 'slideup', 'slidedown', 'wipeleft', 'wiperight', 'wipeup', 'wipedown', 'circleopen', 'circleclose', 'pixelize', 'smoothleft', 'smoothright', 'smoothup', 'smoothdown', 'dissolve', 'radial', 'hblur', 'zoomin']);
+const SUPPORTED_XFADES = new Set(['fade', 'fadeblack', 'fadewhite', 'fadegrays', 'slideleft', 'slideright', 'slideup', 'slidedown', 'wipeleft', 'wiperight', 'wipeup', 'wipedown', 'circleopen', 'circleclose', 'pixelize', 'smoothleft', 'smoothright', 'smoothup', 'smoothdown', 'dissolve', 'radial', 'hblur', 'gaussian', 'zoomin']);
 
 /** Run before starting an expensive export. No unsupported effect is silently replaced. */
 export function browserCompositionDiagnostics(project: Project, defs: TransitionDef[]): string[] {
@@ -111,6 +113,12 @@ export function transitionRgba(a: Uint8ClampedArray, b: Uint8ClampedArray, width
   const p = clamp(progress), q = 1 - p;
   if (p === 0) { out.set(a); return out; }
   if (p === 1) { out.set(b); return out; }
+  if (xfade === 'gaussian') {
+    const outgoing = gaussianRgba(a, width, height, defocusSigma(p, width, height));
+    const incoming = gaussianRgba(b, width, height, defocusSigma(q, width, height));
+    for (let i = 0; i < out.length; i++) out[i] = outgoing[i] * q + incoming[i] * p;
+    return out;
+  }
   if (xfade === 'hblur') {
     // A forward box window shrinks at the right edge, with no wrap or black border.
     // FFmpeg halves the integer width before multiplying by its float progress.
@@ -252,6 +260,12 @@ export function createBrowserCompositor(options: BrowserCompositorOptions) {
     return pool;
   }
   const cache = new Map<string, CanvasImageSource>();
+  const pad = Math.ceil(defocusSigma(1, W, H) * 3);
+  let focusSurface: BrowserCanvas | undefined;
+  function focus(source: BrowserCanvas, destination: BrowserCanvasContext, sigma: number) {
+    focusSurface ??= factory(W + 2 * pad, H + 2 * pad);
+    paintClampedGaussian(source, destination, focusSurface, W, H, pad, sigma);
+  }
   // Two changing roll layers must not evict a third, still website on each frame.
   const cacheLimit = Number.isFinite(options.overlayCacheSize) ? Math.max(1, Math.min(8, Math.floor(options.overlayCacheSize!))) : 4;
   let disposed = false, busy = false;
@@ -320,7 +334,11 @@ export function createBrowserCompositor(options: BrowserCompositorOptions) {
           const entry = entranceFor(project, defs, clip, baseId);
           const local = Math.max(0, Math.min(clip.duration, (layer.sourceTime - clip.offset) / (clip.speed ?? 1)));
           if (entry && local < Math.min(entry.applied.duration, clip.duration)) {
-            applyEntrance(dst, contexts[2], surfaces[index], entry, local, clip, track.base, W, H);
+            if (entry.def.xfade === 'gaussian') {
+              const p = clamp(local / Math.min(entry.applied.duration, clip.duration));
+              focus(surfaces[index], contexts[2], defocusSigma(1 - p, W, H)); clear(dst, W, H, track.base);
+              dst.globalAlpha = p; dst.drawImage(surfaces[2], 0, 0); dst.globalAlpha = 1;
+            } else applyEntrance(dst, contexts[2], surfaces[index], entry, local, clip, track.base, W, H);
           }
           const fade = clipVisualGain(clip, local, project.fps);
           if (fade < 1) {
@@ -331,8 +349,14 @@ export function createBrowserCompositor(options: BrowserCompositorOptions) {
           }
         }
         if (track.transition && track.layers.length === 2) {
+          const defocus = track.transition.def.xfade === 'gaussian';
+          if (defocus) for (const index of [0, 1]) {
+            const p = track.transition.progress;
+            focus(surfaces[index], contexts[2], defocusSigma(index === 0 ? p : 1 - p, W, H));
+            clear(contexts[index], W, H); contexts[index].drawImage(surfaces[2], 0, 0);
+          }
           const a = contexts[0].getImageData(0, 0, W, H), b = contexts[1].getImageData(0, 0, W, H), out = contexts[2].createImageData(W, H);
-          transitionRgba(a.data, b.data, W, H, track.transition.def.xfade, track.transition.progress, out.data);
+          transitionRgba(a.data, b.data, W, H, defocus ? 'fade' : track.transition.def.xfade, track.transition.progress, out.data);
           contexts[2].putImageData(out, 0, 0);
         } else if (track.layers.length) {
           clear(contexts[2], W, H, track.base); contexts[2].drawImage(surfaces[0], 0, 0);
@@ -346,6 +370,7 @@ export function createBrowserCompositor(options: BrowserCompositorOptions) {
   return { renderFrame, dispose() {
     if (disposed) return;
     disposed = true; cache.forEach(releaseImage); cache.clear();
+    if (focusSurface) focusSurface.width = focusSurface.height = 1;
     for (const { surfaces } of pools.values()) surfaces.forEach((s) => { s.width = 1; s.height = 1; });
     pools.clear();
   }, get overlayCacheEntries() { return cache.size; } };

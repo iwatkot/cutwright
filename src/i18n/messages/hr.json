@@ -171,7 +171,6 @@
   "Basic": "Osnovno",
   "Between clips": "Između isječaka",
   "Blocky digital breakdown": "Digitalno raspadanje u blokove",
-  "Blur In/Out": "Zamućenje ulaz/izlaz",
   "Bold": "Podebljano",
   "Bold statement": "Snažna poruka",
   "Brightness": "Svjetlina",
@@ -182,6 +181,7 @@
   "Browser origin required.": "Obavezno: izvor preglednika.",
   "Browser storage is unavailable; changes last for this session. ": "Pohrana preglednika nije dostupna; izmjene vrijede samo za ovu sesiju. ",
   "Callouts": "Pokazivači",
+  "Camera Defocus": "Zamućenje fokusa",
   "Cancel export": "Otkaži izvoz",
   "Cancel export · {0}%": "Otkaži izvoz · {0}%",
   "Cancelled": "Otkazano",
@@ -320,6 +320,7 @@
   "Detach audio": "Odvoji zvuk",
   "Dip through black — chapter breaks, endings": "Prijelaz kroz crno – za promjene poglavlja i završetke",
   "Dip through white — flashbacks, dream beats": "Prijelaz kroz bijelo – za prisjećanja i snove",
+  "Directional Smear": "Usmjereno razmazivanje",
   "Disconnect": "Odspoji",
   "Disconnected": "Odspojeno",
   "Dismiss": "Odbaci",
@@ -436,6 +437,7 @@
   "History": "Povijest",
   "Hold to pan preview": "Držite za pomicanje pretpregleda",
   "Horizontal": "Vodoravno",
+  "Horizontal forward smear blend between shots": "Vodoravno usmjereno razmazivanje između kadrova",
   "Horizontal offset": "Vodoravni pomak",
   "Horizontal pixel ruler, drag for a horizontal guide": "Vodoravno pikselno ravnalo; povuci za vodoravnu vodilicu",
   "Horizontal spacing": "Vodoravni razmak",
@@ -539,7 +541,6 @@
   "Missing or invalid \"{0}\" list": "Popis „{0}“ nedostaje ili je neispravan",
   "Missing project name": "Nedostaje naziv projekta",
   "More detail, larger file.": "Više detalja, veća datoteka.",
-  "Movavi BlurInOut — horizontal blur blend between shots": "Movavi BlurInOut – vodoravno zamućeno pretapanje između kadrova",
   "Movavi config has no timeline clips/tracks": "Movavi konfiguracija nema isječke ni zapise vremenske crte",
   "Move playhead here": "Pomakni pokazivač reprodukcije ovdje",
   "Move track down": "Pomakni zapis dolje",
@@ -998,5 +999,6 @@
   "Zoom preview out · Wheel to zoom": "Smanji pretpregled · kotačić za povećanje",
   "Zoom relative to Fit · Wheel to zoom · Right-drag{0} to pan": "Povećanje u odnosu na prilagođeni prikaz · kotačić za povećanje · desno povlačenje{0} za pomicanje",
   "Zoom timeline in": "Povećaj vremensku crtu",
-  "Zoom timeline out": "Smanji vremensku crtu"
+  "Zoom timeline out": "Smanji vremensku crtu",
+  "Outgoing shot defocuses while the incoming shot comes into focus": "Odlazni kadar gubi fokus dok se dolazni izoštrava"
 }
