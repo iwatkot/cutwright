@@ -11,7 +11,7 @@ export function InspectorSection({ title, children, defaultOpen = true }: { titl
   return <details className="ui-section" open={defaultOpen}><summary onKeyDown={e=>{if(e.key===' '||e.key==='Enter')e.stopPropagation();}}>{title}<span aria-hidden="true">⌄</span></summary><div className="ui-section-body">{children}</div></details>;
 }
 
-function usePopover(open: boolean, close: () => void, anchor: React.RefObject<HTMLElement>, popup: React.RefObject<HTMLElement>) {
+function usePopover(open: boolean, close: () => void, anchor: React.RefObject<HTMLElement>, popup: React.RefObject<HTMLElement>, minimumWidth = 196) {
   const [position, setPosition] = useState<CSSProperties>({});
   useLayoutEffect(() => {
     if (!open) return;
@@ -19,7 +19,7 @@ function usePopover(open: boolean, close: () => void, anchor: React.RefObject<HT
       const a = anchor.current?.getBoundingClientRect();
       if (!a) return;
       const height = Math.min(popup.current?.scrollHeight ?? 280, 300, window.innerHeight - 24);
-      const width = Math.min(Math.max(a.width, 196), window.innerWidth - 24);
+      const width = Math.min(Math.max(a.width, minimumWidth), window.innerWidth - 24);
       const below = window.innerHeight - a.bottom - 8;
       setPosition({ position: 'fixed', width, maxHeight: Math.max(80, Math.min(300, below >= height ? below - 8 : a.top - 16)), left: Math.max(12, Math.min(a.left, window.innerWidth - width - 12)), ...(below >= height ? { top: a.bottom + 5 } : { bottom: window.innerHeight - a.top + 5 }) });
     };
@@ -32,6 +32,27 @@ function usePopover(open: boolean, close: () => void, anchor: React.RefObject<HT
     return () => { document.removeEventListener('pointerdown', dismiss); window.removeEventListener('resize', place); document.removeEventListener('scroll', scroll, true); };
   }, [open]);
   return position;
+}
+
+/** Bounded contextual settings; closed content reserves no editor space. */
+export function PopoverControl({ label, summary, hint, className = '', children }: { label: string; summary: string; hint?: string; className?: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const anchor = useRef<HTMLButtonElement>(null), popup = useRef<HTMLDivElement>(null);
+  const id = useId();
+  const close = () => { setOpen(false); anchor.current?.focus(); };
+  const position = usePopover(open, close, anchor, popup, 288);
+  useEffect(() => { if (open) (popup.current?.querySelector<HTMLElement>('[aria-pressed="true"]') ?? popup.current)?.focus(); }, [open]);
+  return <>
+    <button type="button" ref={anchor} className={`ui-select ${className}`} aria-label={label} aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? id : undefined} data-tooltip={hint ?? label} onClick={() => open ? close() : setOpen(true)}><span>{summary}</span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg></button>
+    {open && createPortal(<div id={id} ref={popup} className="ui-popover ui-settings-popover" role="dialog" aria-label={label} tabIndex={-1} data-shortcut-scope="control" style={position} onKeyDown={e => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); }
+      if (e.key === 'Tab') {
+        const targets = [...(popup.current?.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),[tabindex="0"]') ?? [])];
+        const first = targets[0], last = targets.at(-1);
+        if (first && (e.shiftKey ? document.activeElement === first : document.activeElement === last)) { e.preventDefault(); (e.shiftKey ? last : first)?.focus(); }
+      }
+    }}><div className="ui-popover-heading"><strong>{label}</strong><button type="button" aria-label={uiText("Close")} onClick={close}>×</button></div>{children}</div>, document.body)}
+  </>;
 }
 
 export function SelectControl({ label, value, options, onChange, disabled, className = '', onGestureStart }: { label: string; value: string; options: ControlOption[]; onChange: (value: string) => void; disabled?: boolean; className?: string; onGestureStart?: () => void }) {

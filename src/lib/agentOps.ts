@@ -7,6 +7,7 @@ import type { CanvasSettings, NativeOverlay } from './types';
 import { deleteLinkedClips, patchLinkedClips, splitLinkedClips, unlinkClipGroup } from './clipEdits';
 import { findTransitionAnchor, isEntrance } from './transitionAnchor';
 import { resizeProject } from './canvasGeometry';
+import { addLinkedAudio } from './linkedAudio';
 
 export interface ClipPropsPatch {
   volume?: number; speed?: number; opacity?: number; scale?: number;
@@ -16,6 +17,10 @@ export interface ClipPropsPatch {
 }
 
 export type AgentOp =
+  | { type: 'setProjectInfo'; name?: string; fps?: number }
+  | { type: 'addTrack'; trackId: string }
+  | { type: 'addClip'; clipId?: string; mediaId: string; trackId: string; start: number; duration: number; offset?: number; mutedAudio?: boolean; volume?: number }
+  | { type: 'addOverlay'; clipId?: string; name: string; trackId: string; start: number; duration: number; overlay: NativeOverlay }
   | { type: 'setProjectSize'; width: number; height: number }
   | { type: 'addMarker'; time: number; label: string; color: string }
   | { type: 'updateMarker'; markerId: string; time?: number; label?: string; color?: string }
@@ -87,6 +92,22 @@ export function parseAgentOps(text: string): { ops: AgentOp[]; errors: string[] 
     }
     const o = item as Record<string, unknown>;
     switch (o.type) {
+      case 'setProjectInfo':
+        if ((o.name === undefined || typeof o.name === 'string' && o.name.trim() && o.name.length <= 200) && (o.fps === undefined || inRange(o.fps, 1, 240)) && (o.name !== undefined || o.fps !== undefined)) ops.push(o as AgentOp);
+        else errors.push('setProjectInfo: invalid name or fps');
+        break;
+      case 'addTrack':
+        if (typeof o.trackId === 'string' && /^[va][1-9]\d*$/.test(o.trackId)) ops.push(o as AgentOp);
+        else errors.push('addTrack: invalid trackId');
+        break;
+      case 'addClip':
+      case 'addOverlay': {
+        const common = typeof o.trackId === 'string' && /^[va][1-9]\d*$/.test(o.trackId) && isTime(o.start) && inRange(o.duration, .000001, 86400) && (o.clipId === undefined || isMarkerId(o.clipId));
+        const valid = o.type === 'addClip' ? isMarkerId(o.mediaId) && (o.offset === undefined || isTime(o.offset)) && (o.mutedAudio === undefined || typeof o.mutedAudio === 'boolean') && (o.volume === undefined || inRange(o.volume, 0, 4))
+          : typeof o.name === 'string' && o.name.trim() && !validateOverlay(o.overlay).length;
+        if (common && valid) ops.push(o as AgentOp); else errors.push(`${o.type}: invalid clip, track or content`);
+        break;
+      }
       case 'setProjectSize':
         if (isDimension(o.width) && isDimension(o.height)) ops.push({ type: 'setProjectSize', width: o.width, height: o.height });
         else errors.push('setProjectSize: width and height must be integers from 2 to 16384 pixels');
@@ -245,6 +266,37 @@ export function applyOpsToProject(projectIn: Project, allDefs: TransitionDef[], 
 
   for (const op of ops) {
     switch (op.type) {
+      case 'setProjectInfo':
+        if (op.name !== undefined) project.name = op.name;
+        if (op.fps !== undefined) project.fps = op.fps;
+        applied.push('Updated project name/frame rate');
+        break;
+      case 'addTrack':
+        project.trackSettings = { ...project.trackSettings, [op.trackId]: project.trackSettings?.[op.trackId] ?? {} };
+        applied.push(`Added track ${op.trackId}`);
+        break;
+      case 'addClip': {
+        const media = project.media.find(m => m.id === op.mediaId);
+        if (!media) { rejected.push(`addClip: unknown media ${op.mediaId}`); break; }
+        if (op.clipId && project.clips.some(c => c.id === op.clipId)) { rejected.push(`addClip: duplicate clip ${op.clipId}`); break; }
+        if ((op.trackId.startsWith('a') && media.kind === 'image') || (op.trackId.startsWith('v') && media.kind === 'audio')) { rejected.push('addClip: media is incompatible with track'); break; }
+        if (media.kind !== 'image' && (op.offset ?? 0) + op.duration > media.duration + .1) { rejected.push('addClip: requested range exceeds source duration'); break; }
+        const clip = { id: op.clipId ?? uid(), mediaId: media.id, trackId: op.trackId, name: media.name, start: op.start, duration: op.duration, offset: op.offset ?? 0, color: media.color, ...(op.mutedAudio !== undefined ? { mutedAudio: op.mutedAudio } : {}), ...(op.volume !== undefined ? { volume: op.volume } : {}), ...(media.overlay ? { overlay: structuredClone(media.overlay) } : {}) };
+        project.clips.push(clip);
+        Object.assign(project, addLinkedAudio(project, clip.id, uid));
+        applied.push(`Added clip ${clip.id} on ${op.trackId}`);
+        break;
+      }
+      case 'addOverlay': {
+        if (!op.trackId.startsWith('v')) { rejected.push('addOverlay: needs a video track'); break; }
+        if (op.clipId && project.clips.some(c => c.id === op.clipId)) { rejected.push(`addOverlay: duplicate clip ${op.clipId}`); break; }
+        const mediaId = uid(), clipId = op.clipId ?? uid();
+        project.media.push({ id: mediaId, name: op.name, kind: 'image', src: '', duration: op.duration, width: project.width, height: project.height, color: op.overlay.color.slice(0, 7), overlay: structuredClone(op.overlay) });
+        project.clips.push({ id: clipId, mediaId, name: op.name, trackId: op.trackId, start: op.start, duration: op.duration, offset: 0, color: op.overlay.color.slice(0, 7), overlay: structuredClone(op.overlay) });
+        if (!project.trackOrder?.includes(op.trackId)) project.trackOrder = [op.trackId, ...new Set([...(project.trackOrder ?? []), ...project.clips.map(c => c.trackId).sort((a,b) => b.localeCompare(a, undefined, { numeric: true }))])].filter((id,i,all)=>all.indexOf(id)===i);
+        applied.push(`Added editable overlay ${clipId}`);
+        break;
+      }
       case 'setProjectSize':
         if (!isDimension(op.width) || !isDimension(op.height)) { rejected.push('setProjectSize: width and height must be integers from 2 to 16384 pixels'); break; }
         Object.assign(project, resizeProject(project, op.width, op.height));

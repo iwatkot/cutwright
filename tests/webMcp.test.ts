@@ -26,7 +26,7 @@ describe('document WebMCP lifecycle adapter', () => {
     expect(c.enabled).toBe(true); expect(api.tools.size).toBe(0);
     expect(await saved.execute({})).toMatchObject({ ok: false, error: { code: 'DISABLED' } });
     await a.setActive(true);
-    expect(api.tools.size).toBe(7);
+    expect(api.tools.size).toBe(12);
     expect(await saved.execute({})).toMatchObject({ ok: false, error: { code: 'DISABLED' } });
     expect(await api.tools.get('get_project')!.execute({})).toMatchObject({ ok: true });
   });
@@ -34,8 +34,8 @@ describe('document WebMCP lifecycle adapter', () => {
     useStore.getState().setProject(demoProject(), true);
     const api = modernApi(), fallback = modernApi(), c = createEditorToolController({ enabled: true }); controllers.push(c);
     const a = createWebMcpAdapter(c, { document: { modelContext: api }, navigator: { modelContext: fallback } }); adapters.push(a);
-    expect(await a.refresh()).toMatchObject({ supported: true, registered: true, toolCount: 7, context: 'document' });
-    expect(fallback.registerTool).not.toHaveBeenCalled(); expect(api.registerTool).toHaveBeenCalledTimes(7);
+    expect(await a.refresh()).toMatchObject({ supported: true, registered: true, toolCount: 12, context: 'document' });
+    expect(fallback.registerTool).not.toHaveBeenCalled(); expect(api.registerTool).toHaveBeenCalledTimes(12);
     expect(api.tools.get('get_project')?.annotations.readOnlyHint).toBe(true); expect(api.tools.get('apply_edits')?.annotations.readOnlyHint).toBe(false);
     expect(api.tools.get('apply_edits')?.inputSchema).toMatchObject({ required: ['expectedRevision', 'ops'], additionalProperties: false });
     const result = await api.tools.get('get_project')!.execute({}) as { ok: boolean; revision: string };
@@ -43,7 +43,7 @@ describe('document WebMCP lifecycle adapter', () => {
     const clip = useStore.getState().project.clips[0];
     expect(await api.tools.get('apply_edits')!.execute({ expectedRevision: result.revision, ops: [{ type: 'setClipProps', clipId: clip.id, volume: .123 }] })).toMatchObject({ ok: true, changed: true });
     expect(useStore.getState().project.clips.find((x) => x.id === clip.id)?.volume).toBe(.123); expect(useStore.getState().past).toHaveLength(1);
-    expect(api.registerTool).toHaveBeenCalledTimes(7);
+    expect(api.registerTool).toHaveBeenCalledTimes(12);
   });
 
   it('unregisters through AbortSignal and rejects saved tool handles immediately on disable', async () => {
@@ -52,7 +52,7 @@ describe('document WebMCP lifecycle adapter', () => {
     expect(api.signals.every((s) => s.aborted)).toBe(true); expect(api.tools.size).toBe(0);
     expect(await saved.execute({})).toMatchObject({ ok: false, error: { code: 'DISABLED' } });
     expect(await a.refresh()).toMatchObject({ supported: true, registered: false, toolCount: 0 });
-    c.setEnabled(true); await a.refresh(); expect(api.tools.size).toBe(7);
+    c.setEnabled(true); await a.refresh(); expect(api.tools.size).toBe(12);
     await a.dispose(); expect(api.tools.size).toBe(0); expect(a.status.registered).toBe(false);
   });
 
@@ -70,7 +70,7 @@ describe('document WebMCP lifecycle adapter', () => {
   it('attempts all legacy unregister calls even when some throw synchronously', async () => {
     const api = modernApi(), unregisterTool = vi.fn((name: string) => { api.tools.delete(name); if (name === 'get_project') throw new Error('Already removed'); });
     const { c, a } = setup({ registerTool: api.registerTool, unregisterTool }); await a.refresh(); c.setEnabled(false); await a.refresh();
-    expect(unregisterTool).toHaveBeenCalledTimes(7); expect(a.status.registered).toBe(false);
+    expect(unregisterTool).toHaveBeenCalledTimes(12); expect(a.status.registered).toBe(false);
   });
 
   it('cleans partial registration including a legacy API that throws after adding a tool', async () => {
@@ -91,7 +91,7 @@ describe('document WebMCP lifecycle adapter', () => {
 
   it('registration starts only after enable and controller disposal removes tools', async () => {
     const api = modernApi(), { c, a } = setup(api, false); await a.refresh(); expect(api.registerTool).not.toHaveBeenCalled();
-    c.setEnabled(true); await a.refresh(); expect(api.tools.size).toBe(7);
+    c.setEnabled(true); await a.refresh(); expect(api.tools.size).toBe(12);
     c.dispose(); await a.refresh(); expect(api.tools.size).toBe(0); await a.dispose(); await a.dispose();
   });
 });

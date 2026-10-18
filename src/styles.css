@@ -197,6 +197,8 @@ a.brand-logo:focus-visible { outline: 2px solid var(--accent); outline-offset: 3
 .clipname > svg { width: 11px; height: 11px; vertical-align: -2px; margin-right: 3px; }
 .clip.linked-peer { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .filmstrip { position: absolute; left: 0; right: 0; bottom: 0; top: 0; opacity: .38; pointer-events: none; background-size: auto 100%; background-repeat: repeat-x; }
+.sampled-filmstrip { display: flex; overflow: hidden; }
+.sampled-filmstrip img { flex: none; height: 100%; object-fit: cover; }
 .wave { position: absolute; left: 4px; right: 4px; bottom: 2px; height: 10px; display: flex; align-items: flex-end; gap: 1.5px; pointer-events: none; }
 .wave i { flex: 1; background: rgba(10,20,40,.55); border-radius: 1px; min-height: 15%; }
 

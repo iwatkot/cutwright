@@ -124,7 +124,7 @@ describe('RC project, marker and canvas agent commands', () => {
 
   it('keeps seven tools and applies the new commands as one exact undo/redo transaction', async () => {
     const c = controller(), before = structuredClone(useStore.getState().project), revision = c.status.revision;
-    expect(c.listTools()).toHaveLength(7);
+    expect(c.listTools()).toHaveLength(12);
     const changes: Project[] = [];
     const unsubscribe = useStore.subscribe((state, previous) => { if (state.project !== previous.project) changes.push(state.project); });
     const result = await c.execute('apply_edits', { expectedRevision: revision, ops: [

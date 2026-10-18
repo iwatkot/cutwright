@@ -15,6 +15,7 @@ import { applyOpsToProject } from '../lib/agentOps';
 import { Field, NumberControl, RangeControl } from './ui/Controls';
 import { useShortcutLabel } from '../lib/shortcutPreferences';
 import { FloatingSurface, type SurfaceAnchor } from './ui/FloatingSurface';
+import { browserArtworkStatus } from '../lib/browserArtwork';
 import { IconSettings } from './icons';
 
 type Tab = 'media' | 'text' | 'elements' | 'transitions' | 'subtitles';
@@ -82,7 +83,10 @@ function Head({ title, sub, action }: { title: string; sub: string; action?: Rea
 function MediaPanel() {
   const [buildingPreviews, setBuildingPreviews] = useState(0);
   useEffect(() => {
-    if (!window.cutwright) return;
+    if (!window.cutwright) {
+      const update = () => setBuildingPreviews(browserArtworkStatus.active);
+      update(); return browserArtworkStatus.subscribe(update);
+    }
     let alive = true;
     let active = 0;
     const attempted = new Set<string>();

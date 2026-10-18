@@ -281,7 +281,7 @@ export const useStore = create<EditorState>((set, get) => ({
     set({
       project: {
         ...s.project,
-        media: s.project.media.map((m) => (m.id === target.id ? { ...m, src, offline: false, thumb: undefined, peaks: undefined, duration: duration > 0 ? duration : m.duration } : m)),
+        media: s.project.media.map((m) => (m.id === target.id ? { ...m, src, offline: false, thumb: undefined, filmstrip: undefined, peaks: undefined, duration: duration > 0 ? duration : m.duration } : m)),
       },
     });
     return true;

@@ -19,15 +19,33 @@ async function main() {
   });
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: EDITOR_TOOL_DEFINITIONS }));
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
+    let staged: Awaited<ReturnType<typeof bridge.stageFiles>> | undefined;
+    let destination: Awaited<ReturnType<typeof bridge.stageDestination>> | undefined;
     try {
       if (!EDITOR_TOOL_DEFINITIONS.some(tool => tool.name === request.params.name)) throw new Error('Unknown editor tool.');
-      const value = await bridge.request(request.params.name, request.params.arguments ?? {});
+      let args = request.params.arguments ?? {};
+      if (request.params.name === 'import_media') {
+        if (!Array.isArray(args.paths) || args.files !== undefined) throw new Error('Provide absolute local paths; files is reserved for the connector.');
+        staged = await bridge.stageFiles(args.paths);
+        const { paths: _paths, ...rest } = args; args = { ...rest, files: staged.files };
+      }
+      if (request.params.name === 'open_project') {
+        if (typeof args.path !== 'string' || args.file !== undefined) throw new Error('Provide an absolute project path; file is reserved for the connector.');
+        staged = await bridge.stageFiles([args.path], true);
+        const { path: _path, ...rest } = args; args = { ...rest, file: staged.files[0] };
+      }
+      if (request.params.name === 'save_download') {
+        if (args.destination !== undefined) throw new Error('destination is reserved for the connector.');
+        destination = await bridge.stageDestination(args.outputPath);
+        const { outputPath: _outputPath, ...rest } = args; args = { ...rest, destination: destination.target };
+      }
+      const value = await bridge.request(request.params.name, args);
       const result = value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : { ok: false, error: { message: 'Invalid editor response.' } };
       return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], structuredContent: result, ...(result.ok === false ? { isError: true } : {}) };
     } catch (error) {
       const result = { ok: false, error: { code: 'CONNECTION_ERROR', message: error instanceof Error ? error.message : String(error) } };
       return { content: [{ type: 'text' as const, text: JSON.stringify(result) }], structuredContent: result, isError: true };
-    }
+    } finally { staged?.release(); destination?.release(); }
   });
   const transport = new StdioServerTransport(process.stdin, process.stdout, { maxBufferSize: MAX_CONNECTOR_BYTES });
   let finished!: () => void;

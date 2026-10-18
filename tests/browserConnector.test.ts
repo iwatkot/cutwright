@@ -34,6 +34,23 @@ const call = (port: number, route: string, init: RequestInit = {}) => fetch(`htt
 const pair = (port: number, token = 'a'.repeat(64)) => call(port, '/connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token }) });
 
 describe('browser ↔ local MCP connector', () => {
+  it('streams original staged local bytes only to the paired origin/token and revokes the transfer', async () => {
+    const bridge = await server();
+    await expect(bridge.stageFiles(['relative.mp4'])).rejects.toThrow();
+    await pair(bridge.port);
+    const folder = mkdtempSync(path.resolve('.local', 'staged-files-'));
+    const file = path.join(folder, 'original.mp4'), bytes = Buffer.alloc(5 * 1024 * 1024, 37);
+    writeFileSync(file, bytes);
+    const staged = await bridge.stageFiles([file]), entry = staged.files[0];
+    expect((await fetch(entry.url, { headers: { Origin: origin } })).status).toBe(401);
+    expect((await fetch(entry.url, { headers: { Origin: 'https://untrusted.example', Authorization: `Bearer ${entry.token}` } })).status).toBe(403);
+    const response = await fetch(entry.url, { headers: { Origin: origin, Authorization: `Bearer ${entry.token}` } });
+    expect(Buffer.from(await response.arrayBuffer()).equals(bytes)).toBe(true);
+    staged.release();
+    expect((await fetch(entry.url, { headers: { Origin: origin, Authorization: `Bearer ${entry.token}` } })).status).toBe(401);
+    await expect(bridge.stageFiles([folder])).rejects.toThrow();
+    await expect(bridge.stageFiles(['relative.mp4'])).rejects.toThrow();
+  });
   it('allows time to answer the browser permission prompt on the first discovery', async () => {
     const bridge = await server(), controller = createEditorToolController(); controllers.push(controller);
     const delayedFetch: typeof fetch = async (url, init) => {
