@@ -5,6 +5,7 @@ import { parseAgentOps, applyOpsToProject } from './agentOps';
 import { validateProject } from './validate';
 import type { Project } from './types';
 import type { EditorFiles, StagedEditorFile } from './editorFiles';
+import type { ExportQuality } from './exportQuality';
 
 export type EditorExportPreset = 'source' | '1080' | '720' | '480';
 export interface EditorExportJobSnapshot {
@@ -15,7 +16,7 @@ export interface EditorExportJobSnapshot {
   [key: string]: unknown;
 }
 export interface EditorExportJobs {
-  start(input: { preset: EditorExportPreset; outputPath?: string }): EditorExportJobSnapshot | Promise<EditorExportJobSnapshot>;
+  start(input: { preset: EditorExportPreset; quality?: ExportQuality; outputPath?: string }): EditorExportJobSnapshot | Promise<EditorExportJobSnapshot>;
   get(id: string): EditorExportJobSnapshot | undefined | Promise<EditorExportJobSnapshot | undefined>;
   cancel(id: string): Promise<boolean>;
 }
@@ -168,7 +169,7 @@ export function createEditorToolController(options: EditorToolOptions = {}) {
       }
       if (!options.jobs) return failure('EXPORT_UNAVAILABLE', 'Export jobs are unavailable in this editor session.');
       if (name === 'export_video') {
-        const job = await options.jobs.start({ preset: args.preset as EditorExportPreset, ...(typeof args.outputPath === 'string' ? { outputPath: args.outputPath } : {}) });
+        const job = await options.jobs.start({ preset: args.preset as EditorExportPreset, ...(typeof args.quality === 'string' ? { quality: args.quality as ExportQuality } : {}), ...(typeof args.outputPath === 'string' ? { outputPath: args.outputPath } : {}) });
         record(name, before, `Started local export (${String(args.preset)}).`); return { ok: true, revision: revision(), job: clone(job) };
       }
       const jobId = args.id as string;

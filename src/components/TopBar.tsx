@@ -9,9 +9,9 @@ import { isBrowserMediaSource, restoreBrowserMedia, storeBrowserFile } from '../
 import type { Project } from '../lib/types';
 import { IconButton, IconExport, IconFilePlus, IconFolderOpen, IconKeyboard, IconImport, IconSave } from './icons';
 import { useShortcutLabel } from '../lib/shortcutPreferences';
-import { SelectControl } from './ui/Controls';
 import { ThemeControl } from './ui/theme';
-import { exportDimensions } from '../lib/outputDimensions';
+import ExportSettings from './ExportSettings';
+import type { ExportQuality } from '../lib/exportQuality';
 import BrandLogo from './BrandLogo';
 import { projectDownloadBasename } from '../lib/projectFileName';
 
@@ -57,6 +57,7 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
   const exportStage = job?.stage ?? '';
   const visibleExportStage = localizedDiagnostic(exportStage);
   const [preset, setPreset] = useState<'source' | '1080' | '720' | '480'>('source');
+  const [quality, setQuality] = useState<ExportQuality>('high');
   const inElectron = typeof window !== 'undefined' && !!window.cutwright;
   useEffect(() => {
     const offJobs = exportJobs.subscribe(() => {
@@ -197,7 +198,7 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
     return () => { window.removeEventListener('cw-new', create); window.removeEventListener('cw-import', importFiles); };
   }, [project]);
   const exportMp4 = async () => {
-    try { await exportJobs.start({ preset }); }
+    try { await exportJobs.start({ preset, quality }); }
     catch (error) { toast(uiText("Export failed: {0}", { 0: localizedDiagnostic(error) })); }
   };
 
@@ -216,7 +217,7 @@ export default function TopBar({ onOpenShortcuts }: { onOpenShortcuts: () => voi
       </div>
       <div className="spacer" />
       <button className="import-button" aria-label={uiText("Import")} onClick={importMedia} data-tooltip={uiText("Import video, audio or images{0}", { 0: importShortcut ? ` (${importShortcut})` : '' })}><IconImport /><span>{uiText("Import")}</span></button>
-      <SelectControl label={uiText("Export preset")} className="export-preset" value={preset} onChange={v => setPreset(v as typeof preset)} options={['source','1080','720','480'].map(value=>{ const size=exportDimensions(project,value==='source'?undefined:Number(value)); return {value,label:value==='source'?uiText("Source"):uiText("{0}p", { 0: value }),description:`${size.width} × ${size.height}${value==='source'?uiText(" · Project size"):''}`}; })} />
+      <ExportSettings project={project} preset={preset} quality={quality} onPreset={setPreset} onQuality={setQuality} />
       {exporting ? (
         <button className="primary export-running" id="export-btn" data-tooltip={uiText("{0} · click to cancel", { 0: exportStage && exportStage !== 'Rendering composition' ? visibleExportStage : uiText("Rendering {0}%", { 0: progress }) })} aria-label={uiText("Cancel export · {0}%", { 0: progress })} onClick={() => { if (job) void exportJobs.cancel(job.id); }}><span>{exportStage && exportStage !== 'Rendering composition' ? visibleExportStage : uiText("Rendering {0}%", { 0: progress })}</span><span className="mobile-export-progress" aria-hidden="true">{progress}%</span>{" "}{uiText("· Cancel")}</button>
       ) : (

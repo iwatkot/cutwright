@@ -225,21 +225,34 @@ function drawSource(context: BrowserCanvasContext, source: BrowserFrameSource, w
   else context.drawImage(source, (width - dw) / 2, (height - dh) / 2, dw, dh);
 }
 
-/** Three reusable surfaces; caller retains ownership of every decoded frame.
+/** Lazily bounded surface pools; caller owns every decoded frame. Ordinary,
+ * unmodified base video at project size uses GPU-friendly canvases. Overlays, captions, effects
+ * and non-default transforms keep the established readback rendering path.
  * One compositor renders one frame at a time. Concurrent use is rejected so the
  * exporter cannot accidentally overwrite surfaces while native rasterization waits. */
 export function createBrowserCompositor(options: BrowserCompositorOptions) {
   const { width: W, height: H } = options;
   if (!Number.isInteger(W) || !Number.isInteger(H) || W < 1 || H < 1) throw new Error('Invalid browser composition dimensions');
   const factory = options.createCanvas ?? defaultCanvas;
-  const surfaces = Array.from({ length: 3 }, () => factory(W, H));
-  const contexts = surfaces.map((canvas) => {
-    const context = canvas.getContext('2d', { willReadFrequently: true }) as BrowserCanvasContext | null;
-    if (!context) throw new Error('Canvas2D is unavailable');
-    return context;
-  });
+  const pools = new Map<boolean, { surfaces: BrowserCanvas[]; contexts: BrowserCanvasContext[] }>();
+  function surfacesFor(readback: boolean) {
+    let pool = pools.get(readback);
+    if (!pool) {
+      const surfaces = Array.from({ length: 3 }, () => factory(W, H));
+      try {
+        const contexts = surfaces.map((canvas) => {
+          const context = canvas.getContext('2d', { willReadFrequently: readback }) as BrowserCanvasContext | null;
+          if (!context) throw new Error('Canvas2D is unavailable');
+          return context;
+        });
+        pool = { surfaces, contexts }; pools.set(readback, pool);
+      } catch (error) { surfaces.forEach((s) => { s.width = s.height = 1; }); throw error; }
+    }
+    return pool;
+  }
   const cache = new Map<string, CanvasImageSource>();
-  const cacheLimit = Number.isFinite(options.overlayCacheSize) ? Math.max(1, Math.min(8, Math.floor(options.overlayCacheSize!))) : 2;
+  // Two changing roll layers must not evict a third, still website on each frame.
+  const cacheLimit = Number.isFinite(options.overlayCacheSize) ? Math.max(1, Math.min(8, Math.floor(options.overlayCacheSize!))) : 4;
   let disposed = false, busy = false;
   const rasterize = options.rasterizeSvg ?? defaultRasterize;
   async function native(svg: string) {
@@ -267,7 +280,24 @@ export function createBrowserCompositor(options: BrowserCompositorOptions) {
       const mediaById = new Map(project.media.map((m) => [m.id, m]));
       clear(context, W, H, true);
       const baseId = plan.tracks.find((t) => t.base)?.id;
+      const visible = plan.tracks.filter((t) => t.layers.length);
+      const candidate = visible.length === 1 && visible[0].base && !visible[0].transition && visible[0].layers.length === 1 ? visible[0].layers[0] : undefined;
+      let plainVideo = false;
+      if (candidate) {
+        const clip = candidate.clip, media = mediaById.get(clip.mediaId);
+        const drawable = sources.get(clip.id);
+        const [sourceWidth, sourceHeight] = drawable ? sourceSize(drawable) : [0, 0];
+        const entry = entranceFor(project, defs, clip, baseId);
+        const local = Math.max(0, (candidate.sourceTime - clip.offset) / (clip.speed ?? 1));
+        plainVideo = media?.kind === 'video' && sourceWidth === W && sourceHeight === H && !resolveOverlay(clip, media)
+          && (clip.scale ?? 1) === 1 && (clip.posX ?? 0) === 0 && (clip.posY ?? 0) === 0 && (clip.rotate ?? 0) === 0
+          && (clip.brightness ?? 1) === 1 && (clip.contrast ?? 1) === 1 && (clip.saturation ?? 1) === 1 && (clip.opacity ?? 1) === 1
+          && (!entry || local >= Math.min(entry.applied.duration, clip.duration))
+          && !project.subtitles.some((s) => time >= s.start && time <= s.end);
+      }
+      const { surfaces, contexts } = surfacesFor(!plainVideo);
       for (const track of plan.tracks) {
+        if (!track.layers.length) continue; // Output was already cleared to the opaque base.
         clear(contexts[2], W, H, track.base);
         for (let index = 0; index < track.layers.length; index++) {
           const layer = track.layers[index], clip = layer.clip, media = mediaById.get(clip.mediaId), overlay = resolveOverlay(clip, media);
@@ -307,7 +337,8 @@ export function createBrowserCompositor(options: BrowserCompositorOptions) {
   return { renderFrame, dispose() {
     if (disposed) return;
     disposed = true; cache.forEach(releaseImage); cache.clear();
-    surfaces.forEach((s) => { s.width = 1; s.height = 1; });
+    for (const { surfaces } of pools.values()) surfaces.forEach((s) => { s.width = 1; s.height = 1; });
+    pools.clear();
   }, get overlayCacheEntries() { return cache.size; } };
 }
 
